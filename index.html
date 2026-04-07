@@ -1,0 +1,1394 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Academia Pro | Gestão Inteligente</title>
+    
+    <!-- Fonts & Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Scripts -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#eff6ff', 100: '#dbeafe', 200: '#bfdbfe', 300: '#93c5fd', 
+                            400: '#60a5fa', 500: '#3b82f6', 600: '#2563eb', 700: '#1d4ed8',
+                        },
+                        slate: {
+                            950: '#020617'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Plus Jakarta Sans', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideIn { from { transform: translateX(-20px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes scaleIn { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+        .animate-fade-in { animation: fadeIn 0.4s ease-out; }
+        .animate-slide-in { animation: slideIn 0.4s ease-out; }
+        .animate-scale-in { animation: scaleIn 0.3s ease-out; }
+
+        .glass { background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(12px); }
+        .dark .glass { background: rgba(15, 23, 42, 0.8); }
+
+        /* Card Enhancements */
+        .card-premium {
+            @apply bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2rem] transition-all duration-300 hover:shadow-2xl hover:shadow-primary-500/10 hover:-translate-y-1;
+        }
+        .card-inner-glow {
+            @apply relative overflow-hidden;
+        }
+        .card-inner-glow::after {
+            content: '';
+            @apply absolute inset-0 opacity-0 transition-opacity duration-300 pointer-events-none;
+            background: radial-gradient(circle at top right, rgba(59, 130, 246, 0.05), transparent 70%);
+        }
+        .card-premium:hover::after { @apply opacity-100; }
+
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
+        .dark .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        .sidebar-item.active {
+            background-color: #3b82f6;
+            color: white;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+
+        /* Modal Styles */
+        .modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(2, 6, 23, 0.7);
+            backdrop-filter: blur(4px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 1rem;
+        }
+        .modal.active { display: flex; }
+        .modal-content {
+            background: white;
+            width: 100%;
+            max-width: 500px;
+            border-radius: 2rem;
+            padding: 2.5rem;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        }
+        .dark .modal-content { background: #0f172a; border: 1px border-slate-800; }
+
+        /* Input specific styling */
+        .form-input {
+            @apply w-full px-4 py-3 rounded-xl border-2 border-gray-100 dark:border-slate-800 bg-gray-50 dark:bg-slate-900/50 focus:border-primary-500 focus:bg-white dark:focus:bg-slate-900 outline-none transition-all duration-200;
+        }
+    </style>
+</head>
+<body class="h-full bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-300 overflow-hidden font-sans">
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="fixed inset-0 z-[3000] bg-white dark:bg-slate-950 flex items-center justify-center">
+        <div class="flex flex-col items-center">
+            <div class="w-16 h-16 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin"></div>
+            <p class="mt-4 font-bold text-slate-500 animate-pulse">Carregando Sistema...</p>
+        </div>
+    </div>
+
+    <!-- Login Screen -->
+    <div id="loginScreen" class="fixed inset-0 z-[2000] hidden bg-[url('https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&q=80')] bg-cover bg-center">
+        <div class="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"></div>
+        <div class="relative h-full flex items-center justify-center p-4">
+            <div class="w-full max-w-[450px] animate-scale-in">
+                <div class="glass p-8 md:p-12 rounded-[2.5rem] shadow-2xl border border-white/20">
+                    <div class="text-center mb-10">
+                        <div class="inline-flex items-center justify-center w-20 h-20 bg-primary-600 rounded-3xl mb-6 shadow-2xl shadow-primary-600/40">
+                            <i class="fas fa-dumbbell text-white text-3xl"></i>
+                        </div>
+                        <h1 class="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">Academia Pro</h1>
+                        <p class="text-slate-500 dark:text-slate-400 mt-2 font-medium">Gestão Profissional de Agendamentos</p>
+                    </div>
+
+                    <div id="loginOptions" class="space-y-4">
+                        <button onclick="auth.showUserSelection('coordenador')" class="w-full flex items-center p-5 rounded-2xl bg-white/50 dark:bg-slate-800/50 border-2 border-transparent hover:border-primary-500 hover:bg-white dark:hover:bg-slate-800 transition-all group">
+                            <div class="w-12 h-12 bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 rounded-xl flex items-center justify-center mr-4 group-hover:bg-primary-600 group-hover:text-white transition-all">
+                                <i class="fas fa-user-shield text-xl"></i>
+                            </div>
+                            <div class="text-left">
+                                <span class="block font-bold text-slate-900 dark:text-white text-lg">Coordenador</span>
+                                <span class="text-xs text-slate-500">Gestão e controle total</span>
+                            </div>
+                            <i class="fas fa-chevron-right ml-auto text-slate-300 group-hover:text-primary-500"></i>
+                        </button>
+
+                        <button onclick="auth.showUserSelection('professor')" class="w-full flex items-center p-5 rounded-2xl bg-white/50 dark:bg-slate-800/50 border-2 border-transparent hover:border-emerald-500 hover:bg-white dark:hover:bg-slate-800 transition-all group">
+                            <div class="w-12 h-12 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-xl flex items-center justify-center mr-4 group-hover:bg-emerald-600 group-hover:text-white transition-all">
+                                <i class="fas fa-user-tie text-xl"></i>
+                            </div>
+                            <div class="text-left">
+                                <span class="block font-bold text-slate-900 dark:text-white text-lg">Professor</span>
+                                <span class="text-xs text-slate-500">Agendamentos individuais</span>
+                            </div>
+                            <i class="fas fa-chevron-right ml-auto text-slate-300 group-hover:text-emerald-500"></i>
+                        </button>
+                    </div>
+
+                    <div id="userSelection" class="hidden space-y-4">
+                        <button onclick="auth.backToOptions()" class="text-primary-600 dark:text-primary-400 font-bold flex items-center mb-4 hover:underline">
+                            <i class="fas fa-arrow-left mr-2"></i> Voltar
+                        </button>
+                        <div id="userList" class="space-y-2 max-h-64 overflow-y-auto pr-2 custom-scrollbar"></div>
+                    </div>
+
+                    <div id="passwordEntry" class="hidden space-y-6">
+                        <button onclick="auth.backToUserSelection()" class="text-primary-600 dark:text-primary-400 font-bold flex items-center mb-4 hover:underline">
+                            <i class="fas fa-arrow-left mr-2"></i> Voltar
+                        </button>
+                        <div class="text-center p-4 bg-slate-100 dark:bg-slate-800/50 rounded-2xl">
+                            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">Entrando como</p>
+                            <p id="selectedUserName" class="text-lg font-bold text-slate-900 dark:text-white"></p>
+                        </div>
+                        <div class="relative">
+                            <input type="password" id="loginPassword" class="w-full px-4 py-4 rounded-xl border-2 border-transparent bg-slate-100 dark:bg-slate-800 focus:bg-white dark:focus:bg-slate-900 focus:border-primary-500 outline-none text-center text-2xl tracking-[0.5em] transition-all" placeholder="••••••" onkeydown="if(event.key==='Enter') auth.verifyPassword()">
+                            <button onclick="ui.togglePasswordVisibility('loginPassword', this)" class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-primary-500 transition-colors">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                        <button onclick="auth.verifyPassword()" class="w-full py-4 bg-primary-600 hover:bg-primary-700 text-white rounded-2xl font-bold text-lg shadow-xl shadow-primary-600/30 transition-all transform active:scale-95">
+                            Acessar Sistema
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main App Layout -->
+    <div id="appContainer" class="hidden h-full flex overflow-hidden">
+        <!-- Sidebar -->
+        <aside id="sidebar" class="w-72 flex-shrink-0 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col z-50 transition-all duration-300">
+            <div class="p-6 flex items-center gap-3">
+                <div class="w-10 h-10 bg-primary-600 rounded-xl flex items-center justify-center shadow-lg">
+                    <i class="fas fa-dumbbell text-white"></i>
+                </div>
+                <span class="text-xl font-extrabold tracking-tight text-slate-900 dark:text-white">Academia <span class="text-primary-600">Pro</span></span>
+            </div>
+
+            <nav class="flex-1 px-4 py-4 space-y-2 overflow-y-auto custom-scrollbar">
+                <button onclick="ui.switchTab('dashboard')" id="nav-dashboard" class="sidebar-item active w-full flex items-center px-4 py-3.5 rounded-xl font-bold text-sm transition-all">
+                    <i class="fas fa-chart-pie mr-3.5 text-lg"></i>Dashboard
+                </button>
+                <button onclick="ui.switchTab('schedules')" id="nav-schedules" class="sidebar-item w-full flex items-center px-4 py-3.5 rounded-xl font-bold text-sm text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all">
+                    <i class="fas fa-calendar-check mr-3.5 text-lg"></i>Agendamentos
+                </button>
+                <button onclick="ui.switchTab('maintenance')" id="nav-equipment" class="sidebar-item w-full flex items-center px-4 py-3.5 rounded-xl font-bold text-sm text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all">
+                    <i class="fas fa-tools mr-3.5 text-lg"></i>Manutenção
+                </button>
+                <button onclick="ui.switchTab('partners')" id="nav-partners" class="sidebar-item w-full flex items-center px-4 py-3.5 rounded-xl font-bold text-sm text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all">
+                    <i class="fas fa-id-card mr-3.5 text-lg"></i>Sócios (JSON)
+                </button>
+                <button onclick="ui.switchTab('users')" id="nav-users" class="sidebar-item w-full flex items-center px-4 py-3.5 rounded-xl font-bold text-sm text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all">
+                    <i class="fas fa-users-cog mr-3.5 text-lg"></i>Usuários
+                </button>
+            </nav>
+
+            <div class="p-4 border-t border-slate-200 dark:border-slate-800 space-y-4">
+                <button onclick="ui.toggleTheme()" class="w-full flex items-center px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-300 font-bold text-sm hover:bg-slate-100 transition-all">
+                    <i id="theme-icon" class="fas fa-moon mr-3"></i>
+                    <span id="theme-text">Modo Escuro</span>
+                </button>
+                
+                <div class="flex items-center gap-3 p-3 bg-primary-50 dark:bg-primary-900/20 rounded-2xl cursor-pointer hover:bg-primary-100 transition-all" onclick="auth.editProfile()">
+                    <div class="w-10 h-10 rounded-full bg-primary-600 flex items-center justify-center text-white font-bold">
+                        <span id="userInitial">E</span>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p id="userNameDisplay" class="text-sm font-bold truncate">Everton Alves</p>
+                        <p id="userRoleDisplay" class="text-[10px] uppercase font-bold text-primary-600 tracking-widest">Coordenador</p>
+                    </div>
+                    <button onclick="auth.logout(event)" class="p-2 text-slate-400 hover:text-red-500 transition-colors">
+                        <i class="fas fa-power-off"></i>
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 flex flex-col min-w-0 relative">
+            <!-- Content Header -->
+            <header class="h-20 flex-shrink-0 flex items-center justify-between px-8 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
+                <h2 id="pageTitle" class="text-2xl font-extrabold tracking-tight">Dashboard Analítico</h2>
+                <div class="flex items-center gap-4">
+                    <div id="realtimeStatus" class="flex items-center px-3 py-1.5 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 text-xs font-bold">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500 mr-2 animate-pulse"></span>
+                        Firestore Conectado
+                    </div>
+                </div>
+            </header>
+
+            <!-- Scrollable Content -->
+            <div id="scrollContent" class="flex-1 overflow-y-auto p-8 custom-scrollbar bg-slate-50 dark:bg-slate-950/50">
+                
+                <!-- Dashboard Tab -->
+                <div id="tab-dashboard" class="tab-content active space-y-8 animate-fade-in">
+                    <!-- Stats Grid -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <div class="card-premium p-6 card-inner-glow">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Agendamentos Hoje</p>
+                                    <h3 id="stat-schedules" class="text-4xl font-extrabold mt-2 tracking-tight">0</h3>
+                                </div>
+                                <div class="w-14 h-14 bg-primary-500/10 text-primary-500 rounded-2xl flex items-center justify-center shadow-inner">
+                                    <i class="fas fa-calendar-day text-2xl"></i>
+                                </div>
+                            </div>
+                            <div class="mt-4 flex items-center text-[10px] font-bold text-emerald-500 bg-emerald-500/10 w-fit px-2 py-1 rounded-lg">
+                                <i class="fas fa-arrow-up mr-1"></i> +12% vs ontem
+                            </div>
+                        </div>
+                        <div class="card-premium p-6 card-inner-glow">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Taxa de Ocupação</p>
+                                    <h3 id="stat-occupancy" class="text-4xl font-extrabold mt-2 tracking-tight">0%</h3>
+                                </div>
+                                <div class="w-14 h-14 bg-emerald-500/10 text-emerald-500 rounded-2xl flex items-center justify-center shadow-inner">
+                                    <i class="fas fa-percentage text-2xl"></i>
+                                </div>
+                            </div>
+                            <div class="mt-4 flex items-center text-[10px] font-bold text-slate-400 bg-slate-100 dark:bg-slate-800 w-fit px-2 py-1 rounded-lg">
+                                <i class="fas fa-clock mr-1"></i> Pico: 18h - 20h
+                            </div>
+                        </div>
+                        <div class="card-premium p-6 card-inner-glow">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Alunos Ativos</p>
+                                    <h3 id="stat-students" class="text-4xl font-extrabold mt-2 tracking-tight">0</h3>
+                                </div>
+                                <div class="w-14 h-14 bg-purple-500/10 text-purple-500 rounded-2xl flex items-center justify-center shadow-inner">
+                                    <i class="fas fa-users text-2xl"></i>
+                                </div>
+                            </div>
+                            <div class="mt-4 flex items-center text-[10px] font-bold text-purple-500 bg-purple-500/10 w-fit px-2 py-1 rounded-lg">
+                                <i class="fas fa-check-circle mr-1"></i> Sistema Online
+                            </div>
+                        </div>
+                        <div class="card-premium p-6 card-inner-glow border-red-500/20">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Alertas Manut.</p>
+                                    <h3 id="stat-alerts" class="text-4xl font-extrabold mt-2 tracking-tight text-red-500">0</h3>
+                                </div>
+                                <div class="w-14 h-14 bg-red-500/10 text-red-500 rounded-2xl flex items-center justify-center shadow-inner">
+                                    <i class="fas fa-exclamation-triangle text-2xl"></i>
+                                </div>
+                            </div>
+                            <div class="mt-4 flex items-center text-[10px] font-bold text-red-500 bg-red-500/10 w-fit px-2 py-1 rounded-lg">
+                                <i class="fas fa-wrench mr-1"></i> Ação Requerida
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Charts Grid -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        <div class="card p-8 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2rem]">
+                            <h4 class="text-lg font-bold mb-6 flex items-center gap-2">
+                                <i class="fas fa-chart-line text-primary-600"></i> Fluxo de Agendamentos
+                            </h4>
+                            <div class="h-64"><canvas id="chartFlow"></canvas></div>
+                        </div>
+                        <div class="card p-8 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2rem]">
+                            <h4 class="text-lg font-bold mb-6 flex items-center gap-2">
+                                <i class="fas fa-user-clock text-emerald-600"></i> Ranking de Professores
+                            </h4>
+                            <div id="profRanking" class="space-y-4">
+                                <p class="text-slate-400 italic text-center py-10 text-sm">Sem dados suficientes...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Schedules Tab -->
+                <div id="tab-schedules" class="tab-content space-y-6 animate-fade-in">
+                    <div class="flex flex-col md:flex-row justify-between gap-4">
+                        <div class="relative flex-1 max-w-md">
+                            <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                            <input type="text" id="searchSchedules" class="w-full pl-12 pr-4 py-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 outline-none focus:border-primary-500 transition-all font-medium" placeholder="Buscar por sócio ou professor...">
+                        </div>
+                        <button onclick="ui.openModal('modalSchedule')" class="px-6 py-3.5 bg-primary-600 hover:bg-primary-700 text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-primary-600/20 transition-all">
+                            <i class="fas fa-plus"></i> Novo Agendamento
+                        </button>
+                    </div>
+
+                    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2rem] overflow-hidden shadow-sm">
+                        <div class="overflow-x-auto custom-scrollbar">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="bg-slate-50 dark:bg-slate-800/50">
+                                        <th class="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-slate-200 dark:border-slate-800">Sócio / Dependente</th>
+                                        <th class="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-slate-200 dark:border-slate-800">Título</th>
+                                        <th class="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-slate-200 dark:border-slate-800">Professor</th>
+                                        <th class="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-slate-200 dark:border-slate-800">Agendado por</th>
+                                        <th class="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-slate-200 dark:border-slate-800">Data e Hora</th>
+                                        <th class="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-slate-200 dark:border-slate-800">Status</th>
+                                        <th class="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-slate-200 dark:border-slate-800">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tableSchedules" class="divide-y divide-slate-100 dark:divide-slate-800"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Maintenance Tab -->
+                <div id="tab-maintenance" class="tab-content space-y-6 animate-fade-in">
+                    <div class="flex justify-between items-center">
+                        <div class="flex gap-2">
+                            <span class="px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-bold text-slate-500">
+                                <i class="fas fa-tools mr-2 text-primary-500"></i> <span id="equipCount">0</span> Equipamentos
+                            </span>
+                        </div>
+                        <button onclick="ui.openModal('modalEquipment')" class="px-6 py-3.5 bg-primary-600 hover:bg-primary-700 text-white rounded-2xl font-bold flex items-center gap-2 shadow-lg shadow-primary-600/20 transition-all">
+                            <i class="fas fa-plus"></i> Cadastrar Máquina
+                        </button>
+                    </div>
+
+                    <div id="equipGrid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"></div>
+                </div>
+
+                <!-- Partners Tab (JSON) -->
+                <div id="tab-partners" class="tab-content space-y-6 animate-fade-in">
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <!-- JSON Actions -->
+                        <div class="lg:col-span-1 space-y-6">
+                            <div class="card-premium p-6 card-inner-glow">
+                                <h3 class="text-lg font-extrabold mb-4">Ações JSON</h3>
+                                <div class="space-y-4">
+                                    <div>
+                                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Importar Base de Dados</label>
+                                        <textarea id="jsonImportArea" class="form-input h-32 text-xs font-mono" placeholder='[{"title":"100","name":"João Silva","dependents":["Maria","Pedro"]}]'></textarea>
+                                        <button onclick="logic.importPartnersJSON()" class="w-full mt-3 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-xl font-bold text-xs transition-all shadow-lg shadow-primary-600/20">
+                                            <i class="fas fa-file-import mr-2"></i> Importar JSON
+                                        </button>
+                                    </div>
+                                    <div class="pt-4 border-t border-slate-100 dark:border-slate-800">
+                                        <button onclick="logic.exportPartnersJSON()" class="w-full py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl font-bold text-xs transition-all">
+                                            <i class="fas fa-file-export mr-2"></i> Exportar Base Atual
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="card-premium p-6 card-inner-glow bg-emerald-500/5 border-emerald-500/10">
+                                <h4 class="text-sm font-bold text-emerald-600 mb-2">Dica de Formato</h4>
+                                <p class="text-xs text-slate-500 leading-relaxed">
+                                    O formato JSON deve ser uma lista de objetos contendo <b>title</b>, <b>name</b> e uma lista opcional de <b>dependents</b>.
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Partners List -->
+                        <div class="lg:col-span-2 space-y-6">
+                            <div class="flex justify-between items-center bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800">
+                                <div>
+                                    <h3 class="text-lg font-extrabold">Base de Sócios</h3>
+                                    <p class="text-sm text-slate-500 font-medium">Lista de títulos e beneficiários cadastrados</p>
+                                </div>
+                                <button onclick="ui.openModal('modalPartner')" class="px-6 py-3.5 bg-primary-600 hover:bg-primary-700 text-white rounded-2xl font-bold flex items-center gap-2 shadow-lg shadow-primary-600/20 transition-all">
+                                    <i class="fas fa-plus"></i> Novo Sócio
+                                </button>
+                            </div>
+
+                            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2rem] overflow-hidden">
+                                <div class="overflow-x-auto">
+                                    <table class="w-full text-left">
+                                        <thead class="bg-slate-50 dark:bg-slate-800/50">
+                                            <tr>
+                                                <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Título</th>
+                                                <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Titular / Dependentes</th>
+                                                <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Ações</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="tablePartners" class="divide-y divide-slate-100 dark:divide-slate-800"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Users Tab -->
+                <div id="tab-users" class="tab-content space-y-6 animate-fade-in">
+                    <div class="flex justify-between items-center bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800">
+                        <div>
+                            <h3 class="text-lg font-extrabold">Gestão de Equipe</h3>
+                            <p class="text-sm text-slate-500 font-medium">Controle de acessos e permissões de professores</p>
+                        </div>
+                        <button onclick="logic.prepareUserModal()" class="px-6 py-3.5 bg-primary-600 hover:bg-primary-700 text-white rounded-2xl font-bold flex items-center gap-2 shadow-lg shadow-primary-600/20 transition-all">
+                    <i class="fas fa-user-plus"></i> Novo Professor
+                </button>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="userGrid"></div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- Modais -->
+    
+    <!-- Modal Agendamento -->
+    <div id="modalSchedule" class="modal">
+        <div class="modal-content animate-scale-in">
+            <div class="flex justify-between items-center mb-8">
+                <h3 class="text-2xl font-extrabold">Novo Agendamento</h3>
+                <button onclick="ui.closeModal('modalSchedule')" class="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"><i class="fas fa-times"></i></button>
+            </div>
+            <form onsubmit="logic.handleScheduleSubmit(event)" class="space-y-5">
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Título do Sócio</label>
+                    <input type="text" id="scheduleTitle" class="form-input" placeholder="Digite o número do título" required onkeyup="logic.searchPartner(this.value)">
+                </div>
+                <div id="partnerResults" class="hidden">
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Selecione o Beneficiário</label>
+                    <div id="partnerList" class="custom-scrollbar overflow-y-auto max-h-48 border-2 border-slate-100 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900/50"></div>
+                    <input type="hidden" id="selectedPartnerName">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Professor Responsável</label>
+                    <select id="scheduleProfessor" class="form-input" required></select>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Data</label>
+                        <input type="date" class="form-input" required>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Horário</label>
+                        <input type="time" class="form-input" required>
+                    </div>
+                </div>
+                <button type="submit" class="w-full py-4 bg-primary-600 hover:bg-primary-700 text-white rounded-2xl font-bold text-lg transition-all shadow-xl shadow-primary-600/20 mt-4">Confirmar Agendamento</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Equipamento -->
+    <div id="modalEquipment" class="modal">
+        <div class="modal-content animate-scale-in">
+            <div class="flex justify-between items-center mb-8">
+                <h3 class="text-2xl font-extrabold">Cadastro de Equipamento</h3>
+                <button onclick="ui.closeModal('modalEquipment')" class="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"><i class="fas fa-times"></i></button>
+            </div>
+            <form onsubmit="logic.handleEquipmentSubmit(event)" class="space-y-5">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Código/ID</label>
+                        <input type="text" class="form-input" placeholder="Ex: EST-001" required>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Categoria</label>
+                        <select class="form-input" required>
+                            <option>Cardio</option>
+                            <option>Musculação</option>
+                            <option>Funcional</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Nome da Máquina</label>
+                    <input type="text" class="form-input" placeholder="Ex: Esteira Matrix T5x" required>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Localização</label>
+                    <input type="text" class="form-input" placeholder="Ex: Sala Principal - 1º Andar" required>
+                </div>
+                <button type="submit" class="w-full py-4 bg-primary-600 hover:bg-primary-700 text-white rounded-2xl font-bold text-lg transition-all mt-4">Salvar Equipamento</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Usuário -->
+    <div id="modalUser" class="modal">
+        <div class="modal-content animate-scale-in">
+            <div class="flex justify-between items-center mb-8">
+                <h3 id="userModalTitle" class="text-2xl font-extrabold">Novo Professor</h3>
+                <button onclick="ui.closeModal('modalUser')" class="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"><i class="fas fa-times"></i></button>
+            </div>
+            <form id="userForm" onsubmit="logic.handleUserSubmit(event)" class="space-y-5">
+                <input type="hidden" id="editUserId">
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Nome Completo</label>
+                    <input type="text" id="uName" class="form-input" placeholder="Ex: Ricardo Silva" required>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Usuário de Acesso</label>
+                    <input type="text" id="uUser" class="form-input" placeholder="Ex: ricardo.silva" required>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Senha de Acesso</label>
+                    <input type="password" id="uPass" class="form-input" placeholder="••••••" required>
+                </div>
+                <div id="uRoleArea">
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Perfil do Usuário</label>
+                    <select id="uRole" class="form-input" required>
+                        <option value="professor">Professor</option>
+                        <option value="coordenador">Coordenador</option>
+                    </select>
+                </div>
+                <button type="submit" class="w-full py-4 bg-primary-600 hover:bg-primary-700 text-white rounded-2xl font-bold text-lg transition-all mt-4">Salvar Usuário</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Sócio -->
+    <div id="modalPartner" class="modal">
+        <div class="modal-content animate-scale-in">
+            <div class="flex justify-between items-center mb-8">
+                <h3 id="partnerModalTitle" class="text-2xl font-extrabold">Novo Sócio</h3>
+                <button onclick="ui.closeModal('modalPartner')" class="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"><i class="fas fa-times"></i></button>
+            </div>
+            <form onsubmit="logic.handlePartnerSubmit(event)" class="space-y-5">
+                <input type="hidden" id="editPartnerId">
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Número do Título</label>
+                    <input type="text" id="pTitle" class="form-input" placeholder="Ex: 100" required>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Nome do Titular</label>
+                    <input type="text" id="pName" class="form-input" placeholder="Ex: João da Silva" required>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Dependentes (Separados por vírgula)</label>
+                    <input type="text" id="pDependents" class="form-input" placeholder="Ex: Maria Silva, Pedro Silva">
+                </div>
+                <button type="submit" class="w-full py-4 bg-primary-600 hover:bg-primary-700 text-white rounded-2xl font-bold text-lg transition-all mt-4 shadow-xl shadow-primary-600/20">Salvar Sócio</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // --- CONFIGURAÇÃO DO FIREBASE ---
+        const firebaseConfig = { 
+            apiKey: "AIzaSyCEOpiQMMqpdD0AmNC97Z4cLp16EQlmkgI", 
+            authDomain: "academia-e1c71.firebaseapp.com", 
+            databaseURL: "https://academia-e1c71-default-rtdb.firebaseio.com", 
+            projectId: "academia-e1c71", 
+            storageBucket: "academia-e1c71.firebasestorage.app", 
+            messagingSenderId: "745225128785", 
+            appId: "1:745225128785:web:862b72005cf3aa0b5d6170" 
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // --- GLOBAL STATE ---
+        const state = {
+            currentUser: JSON.parse(localStorage.getItem('gym_currentUser')),
+            theme: localStorage.getItem('gym_theme') || 'light',
+            users: [
+                { id: 'local-admin', name: 'Everton Alves Da Silva', role: 'coordenador', username: 'admin', password: '123' }
+            ],
+            schedules: [],
+            equipment: [],
+            partners: [],
+            charts: {}
+        };
+
+        // --- AUTH MODULE ---
+        window.auth = {
+            async loadUsers() {
+                try {
+                    const snap = await db.collection('users').get();
+                    let firebaseUsers = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    
+                    // Se o Everton não estiver no Firestore, adiciona ele automaticamente
+                    const evertonExists = firebaseUsers.find(u => u.name === 'Everton Alves Da Silva');
+                    if (!evertonExists) {
+                        const evertonData = { name: 'Everton Alves Da Silva', role: 'coordenador', username: 'admin', password: '123' };
+                        const newDoc = await db.collection('users').add(evertonData);
+                        firebaseUsers.push({ id: newDoc.id, ...evertonData });
+                        console.log("Coordenador Everton adicionado ao Firestore.");
+                    }
+
+                    if (firebaseUsers.length > 0) {
+                        state.users = firebaseUsers;
+                    }
+                } catch (error) {
+                    console.warn("Usando usuários locais (Firebase não configurado)");
+                }
+                this.updateProfessorSelects();
+            },
+
+            updateProfessorSelects() {
+                const select = document.getElementById('scheduleProfessor');
+                if (select) {
+                    const profs = state.users.filter(u => u.role === 'professor');
+                    select.innerHTML = profs.map(p => `<option value="${p.name}">${p.name}</option>`).join('');
+                }
+            },
+
+            showUserSelection(role) {
+                const list = document.getElementById('userList');
+                const filtered = state.users.filter(u => u.role === role);
+                
+                if (filtered.length === 0) {
+                    list.innerHTML = `<div class="p-8 text-center"><p class="text-sm text-slate-500 mb-4">Nenhum ${role} encontrado.</p><button onclick="auth.loadUsers().then(() => auth.showUserSelection('${role}'))" class="text-xs font-bold text-primary-600 uppercase">Tentar Novamente</button></div>`;
+                } else {
+                    list.innerHTML = filtered.map(u => `
+                        <button onclick="auth.preparePassword('${u.id}')" class="w-full text-left p-4 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-all flex items-center gap-3 bg-white dark:bg-slate-800 group">
+                            <div class="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center font-bold text-slate-500 group-hover:bg-primary-600 group-hover:text-white transition-all">${u.name.charAt(0)}</div>
+                            <span class="font-bold text-slate-700 dark:text-slate-200">${u.name}</span>
+                        </button>
+                    `).join('');
+                }
+                
+                document.getElementById('loginOptions').classList.add('hidden');
+                document.getElementById('userSelection').classList.remove('hidden');
+                document.getElementById('passwordEntry').classList.add('hidden');
+            },
+
+            preparePassword(id) {
+                state.tempUserId = id;
+                const user = state.users.find(u => u.id === id);
+                if (!user) return alert('Usuário não encontrado!');
+                
+                document.getElementById('selectedUserName').textContent = user.name;
+                document.getElementById('userSelection').classList.add('hidden');
+                document.getElementById('passwordEntry').classList.remove('hidden');
+                document.getElementById('loginPassword').value = '';
+                setTimeout(() => document.getElementById('loginPassword').focus(), 100);
+            },
+
+            verifyPassword() {
+                const pass = document.getElementById('loginPassword').value;
+                const user = state.users.find(u => u.id === state.tempUserId);
+                if (user && user.password === pass) {
+                    state.currentUser = user;
+                    localStorage.setItem('gym_currentUser', JSON.stringify(user));
+                    ui.showApp();
+                } else {
+                    alert('Senha incorreta!');
+                }
+            },
+
+            backToOptions() {
+                document.getElementById('loginOptions').classList.remove('hidden');
+                document.getElementById('userSelection').classList.add('hidden');
+            },
+
+            backToUserSelection() {
+                document.getElementById('userSelection').classList.remove('hidden');
+                document.getElementById('passwordEntry').classList.add('hidden');
+            },
+
+            logout(e) {
+                if (e) e.stopPropagation();
+                if (confirm('Deseja sair do sistema?')) {
+                    state.currentUser = null;
+                    localStorage.removeItem('gym_currentUser');
+                    location.reload();
+                }
+            },
+
+            editProfile() {
+                logic.editUser(state.currentUser.id);
+            }
+        };
+
+        // --- UI MODULE ---
+        window.ui = {
+            init() {
+                try {
+                    this.applyTheme();
+                    if (state.currentUser) {
+                        this.showApp();
+                    } else {
+                        this.showLogin();
+                    }
+                } catch (error) {
+                    console.error("Erro na inicialização:", error);
+                } finally {
+                    const overlay = document.getElementById('loadingOverlay');
+                    if (overlay) overlay.classList.add('hidden');
+                }
+            },
+
+            showLogin() {
+                document.getElementById('loginScreen').classList.remove('hidden');
+                document.getElementById('appContainer').classList.add('hidden');
+                auth.loadUsers().catch(err => console.warn("Erro ao carregar usuários iniciais:", err));
+            },
+
+            showApp() {
+                document.getElementById('loginScreen').classList.add('hidden');
+                document.getElementById('appContainer').classList.remove('hidden');
+                
+                if (state.currentUser) {
+                    document.getElementById('userNameDisplay').textContent = state.currentUser.name;
+                    document.getElementById('userRoleDisplay').textContent = state.currentUser.role;
+                    document.getElementById('userInitial').textContent = state.currentUser.name.charAt(0);
+                }
+                
+                this.applyPermissions();
+                logic.syncAll().catch(err => console.warn("Erro na sincronização inicial:", err));
+            },
+
+            applyTheme() {
+                const icon = document.getElementById('theme-icon');
+                const text = document.getElementById('theme-text');
+                if (state.theme === 'dark') {
+                    document.documentElement.classList.add('dark');
+                    if (icon) icon.className = 'fas fa-sun mr-3';
+                    if (text) text.textContent = 'Modo Claro';
+                } else {
+                    document.documentElement.classList.remove('dark');
+                    if (icon) icon.className = 'fas fa-moon mr-3';
+                    if (text) text.textContent = 'Modo Escuro';
+                }
+            },
+
+            toggleTheme() {
+                state.theme = state.theme === 'light' ? 'dark' : 'light';
+                localStorage.setItem('gym_theme', state.theme);
+                this.applyTheme();
+            },
+
+            switchTab(tabId) {
+                document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
+                
+                const tab = document.getElementById(`tab-${tabId}`);
+                const navId = tabId === 'maintenance' ? 'nav-equipment' : `nav-${tabId}`;
+                const nav = document.getElementById(navId);
+                
+                if (tab) tab.classList.add('active');
+                if (nav) nav.classList.add('active');
+                
+                const titles = { 
+                    'dashboard': 'Dashboard Analítico', 
+                    'schedules': 'Gestão de Agendamentos', 
+                    'maintenance': 'Controle de Manutenção', 
+                    'partners': 'Banco de Dados de Sócios (JSON)',
+                    'users': 'Equipe Técnica' 
+                };
+                document.getElementById('pageTitle').textContent = titles[tabId] || 'Academia Pro';
+            },
+
+            applyPermissions() {
+                const isCoord = state.currentUser.role === 'coordenador';
+                const dash = document.getElementById('nav-dashboard');
+                const equip = document.getElementById('nav-equipment');
+                const partners = document.getElementById('nav-partners');
+                const users = document.getElementById('nav-users');
+                
+                if (dash) dash.style.display = isCoord ? 'flex' : 'none';
+                if (equip) equip.style.display = isCoord ? 'flex' : 'none';
+                if (partners) partners.style.display = isCoord ? 'flex' : 'none';
+                if (users) users.style.display = isCoord ? 'flex' : 'none';
+                
+                if (!isCoord) this.switchTab('schedules');
+            },
+
+            togglePasswordVisibility(inputId, btn) {
+                const input = document.getElementById(inputId);
+                const icon = btn.querySelector('i');
+                if (input.type === 'password') {
+                    input.type = 'text';
+                    icon.className = 'fas fa-eye-slash';
+                } else {
+                    input.type = 'password';
+                    icon.className = 'fas fa-eye';
+                }
+            },
+
+            openModal(id) { document.getElementById(id).classList.add('active'); },
+            closeModal(id) { document.getElementById(id).classList.remove('active'); },
+
+            renderSchedules() {
+                const container = document.getElementById('tableSchedules');
+                if (!container) return;
+                const filtered = state.currentUser.role === 'coordenador' 
+                    ? state.schedules 
+                    : state.schedules.filter(s => s.professor === state.currentUser.name);
+
+                container.innerHTML = filtered.map(s => `
+                    <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+                        <td class="px-6 py-4 font-bold">${s.socio}</td>
+                        <td class="px-6 py-4 text-sm text-slate-500 font-mono">${s.plano}</td>
+                        <td class="px-6 py-4 text-sm font-semibold">${s.professor}</td>
+                        <td class="px-6 py-4 text-sm font-medium text-slate-500">${s.createdBy || 'Sistema'}</td>
+                        <td class="px-6 py-4 text-sm">
+                            <div class="font-bold">${new Date(s.data).toLocaleDateString('pt-BR')}</div>
+                            <div class="text-slate-400 text-xs">${s.hora}</div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-widest ${this.getStatusColor(s.status)}">${s.status}</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <button onclick="logic.deleteSchedule('${s.id}')" class="w-9 h-9 flex items-center justify-center rounded-xl bg-red-50 dark:bg-red-900/20 text-red-500 hover:bg-red-500 hover:text-white transition-all">
+                                <i class="fas fa-trash-alt text-xs"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `).join('');
+            },
+
+            renderEquipment() {
+                const container = document.getElementById('equipGrid');
+                if (!container) return;
+                document.getElementById('equipCount').textContent = state.equipment.length;
+                container.innerHTML = state.equipment.map(e => `
+                    <div class="card-premium p-6 card-inner-glow animate-scale-in">
+                        <div class="flex justify-between mb-4">
+                            <div class="w-14 h-14 bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center text-slate-500 shadow-inner">
+                                <i class="fas ${this.getEquipIcon(e.categoria)} text-2xl"></i>
+                            </div>
+                            <span class="px-3 py-1.5 rounded-full text-[10px] font-extrabold uppercase tracking-widest ${this.getStatusColor(e.status)} shadow-sm">${e.status}</span>
+                        </div>
+                        <h4 class="font-extrabold text-xl tracking-tight">${e.nome}</h4>
+                        <div class="flex items-center gap-2 mt-2">
+                             <span class="text-[10px] font-bold text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">${e.id}</span>
+                             <span class="text-[10px] font-bold text-slate-400">•</span>
+                             <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">${e.local}</span>
+                        </div>
+                        
+                        <div class="mt-8 pt-6 border-t border-slate-100 dark:border-slate-800/50 flex justify-between items-center">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
+                                    <i class="fas fa-calendar-check text-sm"></i>
+                                </div>
+                                <div>
+                                    <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Última Revisão</p>
+                                    <p class="font-bold text-xs mt-0.5">${new Date(e.ultima).toLocaleDateString('pt-BR')}</p>
+                                </div>
+                            </div>
+                            <button onclick="logic.deleteEquipment('${e.id}')" class="w-10 h-10 flex items-center justify-center rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all shadow-sm">
+                                <i class="fas fa-trash-alt text-sm"></i>
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+            },
+
+            renderUsers() {
+                const container = document.getElementById('userGrid');
+                if (!container) return;
+                container.innerHTML = state.users.map(u => `
+                    <div class="card-premium p-6 card-inner-glow animate-scale-in">
+                        <div class="flex items-center gap-5 mb-6">
+                            <div class="relative">
+                                <div class="w-16 h-16 rounded-[1.5rem] bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center text-white text-2xl font-black shadow-lg shadow-primary-500/20">
+                                    ${u.name.charAt(0)}
+                                </div>
+                                <div class="absolute -bottom-1 -right-1 w-6 h-6 bg-emerald-500 border-4 border-white dark:border-slate-900 rounded-full"></div>
+                            </div>
+                            <div>
+                                <h4 class="font-extrabold text-lg tracking-tight">${u.name}</h4>
+                                <div class="flex items-center gap-2 mt-1">
+                                    <span class="px-2 py-0.5 bg-primary-100 dark:bg-primary-900/30 text-primary-600 text-[9px] font-black rounded-md uppercase tracking-widest">${u.role}</span>
+                                    <span class="text-[10px] text-slate-400 font-bold">• Ativo</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="space-y-3 bg-slate-50 dark:bg-slate-800/30 p-4 rounded-2xl border border-slate-100 dark:border-slate-800/50">
+                            <div class="flex justify-between items-center text-xs">
+                                <span class="text-slate-400 font-bold uppercase tracking-widest">ID de Acesso</span>
+                                <span class="font-black font-mono text-primary-600">${u.username}</span>
+                            </div>
+                        </div>
+                        <div class="mt-6 pt-4 flex gap-3">
+                            <button onclick="logic.editUser('${u.id}')" class="flex-1 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-primary-500 hover:text-primary-500 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all shadow-sm">
+                                <i class="fas fa-edit mr-2"></i> Editar
+                            </button>
+                            ${u.role !== 'coordenador' ? `
+                            <button onclick="logic.deleteUser('${u.id}')" class="w-12 h-12 flex items-center justify-center bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white rounded-xl transition-all shadow-sm">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>` : ''}
+                        </div>
+                    </div>
+                `).join('');
+            },
+
+            renderPartners() {
+                const container = document.getElementById('tablePartners');
+                if (!container) return;
+                container.innerHTML = state.partners.map(p => `
+                    <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+                        <td class="px-6 py-4 font-black text-primary-600 font-mono">${p.title}</td>
+                        <td class="px-6 py-4">
+                            <div class="font-extrabold text-slate-900 dark:text-white">${p.name}</div>
+                            <div class="text-[10px] text-slate-400 font-bold mt-1 uppercase tracking-wider">
+                                ${p.dependents && p.dependents.length ? `<i class="fas fa-users mr-1"></i> ${p.dependents.join(', ')}` : '<i class="fas fa-user mr-1"></i> Sem dependentes'}
+                            </div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="flex gap-2">
+                                <button onclick="logic.editPartner('${p.id}')" class="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-primary-600 hover:text-white transition-all shadow-sm">
+                                    <i class="fas fa-edit text-xs"></i>
+                                </button>
+                                <button onclick="logic.deletePartner('${p.id}')" class="w-9 h-9 flex items-center justify-center rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all shadow-sm">
+                                    <i class="fas fa-trash-alt text-xs"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `).join('');
+            },
+
+            getStatusColor(status) {
+                const map = { 'Presente': 'bg-emerald-100 text-emerald-600', 'Agendado': 'bg-primary-100 text-primary-600', 'Faltou': 'bg-red-100 text-red-600', 'Em dia': 'bg-emerald-100 text-emerald-600', 'Vencida': 'bg-red-100 text-red-600', 'Em Manutenção': 'bg-orange-100 text-orange-600' };
+                return map[status] || 'bg-slate-100 text-slate-600';
+            },
+
+            getEquipIcon(cat) {
+                return cat === 'Cardio' ? 'fa-running' : cat === 'Musculação' ? 'fa-dumbbell' : 'fa-box';
+            },
+
+            updateDashboard() {
+                const statSch = document.getElementById('stat-schedules');
+                const statOcc = document.getElementById('stat-occupancy');
+                const statStu = document.getElementById('stat-students');
+                const statAlt = document.getElementById('stat-alerts');
+                
+                if (statSch) statSch.textContent = state.schedules.length;
+                if (statOcc) statOcc.textContent = Math.min(Math.round((state.schedules.length / 150) * 100), 100) + '%';
+                if (statStu) statStu.textContent = new Set(state.schedules.map(s => s.socio)).size;
+                if (statAlt) statAlt.textContent = state.equipment.filter(e => e.status !== 'Em dia').length;
+                
+                const profs = {};
+                state.schedules.forEach(s => profs[s.professor] = (profs[s.professor] || 0) + 1);
+                const sorted = Object.entries(profs).sort((a,b) => b[1]-a[1]).slice(0, 4);
+                
+                const ranking = document.getElementById('profRanking');
+                if (ranking) {
+                    if (sorted.length) {
+                        ranking.innerHTML = sorted.map(([name, count]) => `
+                            <div class="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl">
+                                <span class="font-bold text-sm">${name}</span>
+                                <span class="px-3 py-1 bg-primary-600 text-white rounded-lg text-xs font-bold">${count} aulas</span>
+                            </div>
+                        `).join('');
+                    } else {
+                        ranking.innerHTML = '<p class="text-slate-400 italic text-center py-10 text-sm">Sem dados suficientes...</p>';
+                    }
+                }
+                this.updateCharts();
+            },
+
+            updateCharts() {
+                const ctxEl = document.getElementById('chartFlow');
+                if (!ctxEl) return;
+                const ctx = ctxEl.getContext('2d');
+                if (state.charts.flow) state.charts.flow.destroy();
+                
+                state.charts.flow = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'],
+                        datasets: [{
+                            label: 'Frequência',
+                            data: [12, 19, 15, 25, 22, 10],
+                            borderColor: '#3b82f6',
+                            tension: 0.4,
+                            fill: true,
+                            backgroundColor: 'rgba(59, 130, 246, 0.1)'
+                        }]
+                    },
+                    options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true }, x: { grid: { display: false } } }, responsive: true, maintainAspectRatio: false }
+                });
+            }
+        };
+
+        // --- LOGIC MODULE ---
+        window.logic = {
+            async syncAll() {
+                try {
+                    console.log("Iniciando sincronização...");
+                    await Promise.all([
+                        logic.syncSchedules(),
+                        logic.syncEquipment(),
+                        logic.syncPartners(),
+                        auth.loadUsers()
+                    ]);
+                    console.log("Sincronização concluída com sucesso.");
+                } catch (error) {
+                    console.error("Erro na sincronização completa:", error);
+                } finally {
+                    ui.renderSchedules();
+                    ui.renderEquipment();
+                    ui.renderPartners();
+                    ui.renderUsers();
+                    ui.updateDashboard();
+                }
+            },
+
+            async syncSchedules() {
+                try {
+                    const snap = await db.collection('schedules').orderBy('data', 'desc').get();
+                    state.schedules = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                } catch (error) {
+                    console.warn("Sincronização de agendamentos falhou (Firebase não configurado)");
+                }
+            },
+
+            async syncEquipment() {
+                try {
+                    const snap = await db.collection('equipment').get();
+                    state.equipment = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                } catch (error) {
+                    console.warn("Sincronização de equipamentos falhou (Firebase não configurado)");
+                }
+            },
+
+            async syncPartners() {
+                try {
+                    const snap = await db.collection('partners').orderBy('title', 'asc').get();
+                    state.partners = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                } catch (error) {
+                    console.warn("Sincronização de sócios falhou");
+                }
+            },
+
+            async searchPartner(title) {
+                try {
+                    const results = document.getElementById('partnerResults');
+                    const list = document.getElementById('partnerList');
+                    if (!results || !list) return;
+                    if (title.length < 2) { results.classList.add('hidden'); return; }
+
+                    const snap = await db.collection('partners').where('title', '==', title).get();
+                    if (snap.empty) {
+                        list.innerHTML = '<p class="p-4 text-xs text-red-500 font-bold uppercase text-center">Título não encontrado</p>';
+                    } else {
+                        const data = snap.docs[0].data();
+                        const all = [data.name, ...(data.dependents || [])];
+                        list.innerHTML = all.map(name => `
+                            <div onclick="logic.selectPartner(this, '${name}')" class="p-4 cursor-pointer hover:bg-primary-50 dark:hover:bg-primary-900/20 border-b border-slate-100 dark:border-slate-800 last:border-0 flex items-center gap-3 transition-all">
+                                <i class="fas fa-user text-slate-300"></i>
+                                <span class="font-bold text-sm">${name}</span>
+                            </div>
+                        `).join('');
+                    }
+                    results.classList.remove('hidden');
+                } catch (error) {
+                    console.error("Erro ao buscar sócio:", error);
+                    const list = document.getElementById('partnerList');
+                    if (list) list.innerHTML = '<p class="p-4 text-xs text-orange-500 font-bold uppercase text-center">Erro na busca (Verifique Firebase)</p>';
+                    document.getElementById('partnerResults').classList.remove('hidden');
+                }
+            },
+
+            selectPartner(el, name) {
+                document.querySelectorAll('#partnerList div').forEach(d => d.classList.remove('bg-primary-600', 'text-white'));
+                el.classList.add('bg-primary-600', 'text-white');
+                const hiddenInput = document.getElementById('selectedPartnerName');
+                if (hiddenInput) hiddenInput.value = name;
+            },
+
+            async handleScheduleSubmit(e) {
+                e.preventDefault();
+                const btn = e.target.querySelector('button[type="submit"]');
+                const originalText = btn.textContent;
+                
+                try {
+                    btn.disabled = true;
+                    btn.textContent = "Salvando...";
+                    
+                    const name = document.getElementById('selectedPartnerName').value;
+                    if (!name) return alert('Selecione um beneficiário!');
+
+                    const data = {
+                        socio: name,
+                        plano: document.getElementById('scheduleTitle').value,
+                        professor: document.getElementById('scheduleProfessor').value,
+                        data: e.target.elements[3].value,
+                        hora: e.target.elements[4].value,
+                        status: 'Agendado',
+                        createdBy: state.currentUser.name,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    };
+
+                    await db.collection('schedules').add(data);
+                    ui.closeModal('modalSchedule');
+                    e.target.reset();
+                    await logic.syncAll();
+                } catch (error) {
+                    console.error("Erro ao salvar agendamento:", error);
+                    alert("Erro ao salvar no Firebase. Verifique sua configuração.");
+                } finally {
+                    btn.disabled = false;
+                    btn.textContent = originalText;
+                }
+            },
+
+            async handleEquipmentSubmit(e) {
+                e.preventDefault();
+                const btn = e.target.querySelector('button[type="submit"]');
+                const originalText = btn.textContent;
+                
+                try {
+                    btn.disabled = true;
+                    btn.textContent = "Salvando...";
+                    
+                    const data = {
+                        id: e.target.elements[0].value,
+                        categoria: e.target.elements[1].value,
+                        nome: e.target.elements[2].value,
+                        local: e.target.elements[3].value,
+                        ultima: new Date().toISOString().split('T')[0],
+                        status: 'Em dia'
+                    };
+                    await db.collection('equipment').doc(data.id).set(data);
+                    ui.closeModal('modalEquipment');
+                    await logic.syncAll();
+                } catch (error) {
+                    console.error("Erro ao salvar equipamento:", error);
+                    alert("Erro ao salvar no Firebase.");
+                } finally {
+                    btn.disabled = false;
+                    btn.textContent = originalText;
+                }
+            },
+
+            async handleUserSubmit(e) {
+                e.preventDefault();
+                const btn = e.target.querySelector('button[type="submit"]');
+                const originalText = btn.textContent;
+                
+                try {
+                    btn.disabled = true;
+                    btn.textContent = "Salvando...";
+                    console.log("Salvando usuário...");
+                    
+                    const id = document.getElementById('editUserId').value;
+                    const data = {
+                        name: document.getElementById('uName').value,
+                        username: document.getElementById('uUser').value,
+                        password: document.getElementById('uPass').value,
+                        role: document.getElementById('uRole').value
+                    };
+
+                    if (id) {
+                        await db.collection('users').doc(id).update(data);
+                        console.log("Usuário atualizado:", id);
+                        if (state.currentUser && state.currentUser.id === id) {
+                            state.currentUser = { id, ...data };
+                            localStorage.setItem('gym_currentUser', JSON.stringify(state.currentUser));
+                        }
+                    } else {
+                        const newDoc = await db.collection('users').add(data);
+                        console.log("Novo usuário criado:", newDoc.id);
+                    }
+                    
+                    ui.closeModal('modalUser');
+                    await logic.syncAll();
+                } catch (error) {
+                    console.error("Erro ao salvar usuário:", error);
+                    alert("Erro ao salvar no Firebase: " + error.message);
+                } finally {
+                    btn.disabled = false;
+                    btn.textContent = originalText;
+                }
+            },
+
+            prepareUserModal() {
+                document.getElementById('userModalTitle').textContent = 'Novo Professor';
+                document.getElementById('editUserId').value = '';
+                document.getElementById('uName').value = '';
+                document.getElementById('uUser').value = '';
+                document.getElementById('uPass').value = '';
+                document.getElementById('uRole').value = 'professor';
+                document.getElementById('uRoleArea').style.display = 'block';
+                ui.openModal('modalUser');
+            },
+
+            editUser(id) {
+                const u = state.users.find(user => user.id === id);
+                if (!u) return;
+                document.getElementById('userModalTitle').textContent = 'Editar Perfil';
+                document.getElementById('editUserId').value = u.id;
+                document.getElementById('uName').value = u.name;
+                document.getElementById('uUser').value = u.username;
+                document.getElementById('uPass').value = u.password;
+                document.getElementById('uRole').value = u.role;
+                document.getElementById('uRoleArea').style.display = (state.currentUser.role === 'coordenador' && state.currentUser.id !== id) ? 'block' : 'none';
+                ui.openModal('modalUser');
+            },
+
+            async deleteSchedule(id) { if (confirm('Excluir agendamento?')) { await db.collection('schedules').doc(id).delete(); await logic.syncAll(); } },
+            async deleteEquipment(id) { if (confirm('Excluir máquina?')) { await db.collection('equipment').doc(id).delete(); await logic.syncAll(); } },
+            async deleteUser(id) { 
+                const u = state.users.find(user => user.id === id);
+                if (u && u.role === 'coordenador') return alert('Usuários com perfil de Coordenador não podem ser removidos do sistema!');
+                if (id === state.currentUser.id) return alert('Você não pode se excluir!');
+                if (confirm('Remover professor da equipe?')) { await db.collection('users').doc(id).delete(); await logic.syncAll(); } 
+            },
+
+            // --- PARTNERS LOGIC ---
+            async handlePartnerSubmit(e) {
+                e.preventDefault();
+                const btn = e.target.querySelector('button[type="submit"]');
+                const originalText = btn.textContent;
+                
+                try {
+                    btn.disabled = true;
+                    btn.textContent = "Salvando...";
+                    
+                    const id = document.getElementById('editPartnerId').value;
+                    const dependentsStr = document.getElementById('pDependents').value;
+                    const data = {
+                        title: document.getElementById('pTitle').value,
+                        name: document.getElementById('pName').value,
+                        dependents: dependentsStr ? dependentsStr.split(',').map(s => s.trim()).filter(s => s !== "") : []
+                    };
+
+                    if (id) {
+                        await db.collection('partners').doc(id).update(data);
+                    } else {
+                        await db.collection('partners').add(data);
+                    }
+                    ui.closeModal('modalPartner');
+                    await logic.syncAll();
+                } catch (error) {
+                    console.error("Erro ao salvar sócio:", error);
+                    alert("Erro ao salvar no Firebase.");
+                } finally {
+                    btn.disabled = false;
+                    btn.textContent = originalText;
+                }
+            },
+
+            editPartner(id) {
+                const p = state.partners.find(partner => partner.id === id);
+                if (!p) return;
+                document.getElementById('partnerModalTitle').textContent = 'Editar Sócio';
+                document.getElementById('editPartnerId').value = p.id;
+                document.getElementById('pTitle').value = p.title;
+                document.getElementById('pName').value = p.name;
+                document.getElementById('pDependents').value = p.dependents ? p.dependents.join(', ') : '';
+                ui.openModal('modalPartner');
+            },
+
+            async deletePartner(id) {
+                if (confirm('Deseja excluir este sócio e seus dependentes da base?')) {
+                    try {
+                        await db.collection('partners').doc(id).delete();
+                        await logic.syncAll();
+                    } catch (error) {
+                        alert("Erro ao deletar.");
+                    }
+                }
+            },
+
+            async importPartnersJSON() {
+                const area = document.getElementById('jsonImportArea');
+                const raw = area.value.trim();
+                if (!raw) return alert("Cole o JSON para importar.");
+
+                try {
+                    let data = JSON.parse(raw);
+                    let partnersToImport = [];
+
+                    // Suporta o formato de dicionário: {"1": ["NOME 1", "NOME 2"]}
+                    if (!Array.isArray(data) && typeof data === 'object') {
+                        for (const [title, names] of Object.entries(data)) {
+                            if (Array.isArray(names) && names.length > 0) {
+                                partnersToImport.push({
+                                    title: title,
+                                    name: names[0], // Primeiro nome é o Titular
+                                    dependents: names.slice(1) // Restante são dependentes
+                                });
+                            }
+                        }
+                    } else if (Array.isArray(data)) {
+                        partnersToImport = data;
+                    } else {
+                        throw new Error("O JSON deve ser uma lista [] ou um dicionário de títulos {}");
+                    }
+
+                    if (partnersToImport.length === 0) throw new Error("Nenhum dado válido encontrado.");
+
+                    if (confirm(`Deseja importar ${partnersToImport.length} sócios? Isso pode levar alguns segundos.`)) {
+                        const batch = db.batch();
+                        partnersToImport.forEach(item => {
+                            const ref = db.collection('partners').doc();
+                            batch.set(ref, {
+                                title: String(item.title),
+                                name: item.name,
+                                dependents: item.dependents || []
+                            });
+                        });
+                        await batch.commit();
+                        alert("Importação concluída com sucesso!");
+                        area.value = "";
+                        await logic.syncAll();
+                    }
+                } catch (error) {
+                    console.error(error);
+                    alert("Erro no formato do JSON: " + error.message);
+                }
+            },
+
+            exportPartnersJSON() {
+                const simplified = state.partners.map(({ title, name, dependents }) => ({ title, name, dependents }));
+                const json = JSON.stringify(simplified, null, 2);
+                
+                // Opção 1: Colocar na área de texto
+                document.getElementById('jsonImportArea').value = json;
+                
+                // Opção 2: Download do arquivo
+                const blob = new Blob([json], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `academia_pro_socios_${new Date().toISOString().split('T')[0]}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+                
+                alert("Dados exportados! O arquivo foi baixado e o código JSON está na caixa de texto.");
+            }
+        };
+
+        // Bootstrap
+        window.onload = () => {
+            ui.init();
+            
+            // Segurança: Se o overlay ainda estiver visível após 5s, remova-o
+            setTimeout(() => {
+                const overlay = document.getElementById('loadingOverlay');
+                if (overlay && !overlay.classList.contains('hidden')) {
+                    console.warn("Removendo overlay de carregamento via fallback de tempo.");
+                    overlay.classList.add('hidden');
+                }
+            }, 5000);
+        };
+    </script>
+</body>
+</html>
