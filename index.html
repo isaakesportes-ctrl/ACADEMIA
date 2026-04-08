@@ -1,0 +1,2353 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Academia Pro | Gestão Inteligente</title>
+    
+    <!-- Fonts & Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Scripts -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#eff6ff', 100: '#dbeafe', 200: '#bfdbfe', 300: '#93c5fd', 
+                            400: '#60a5fa', 500: '#3b82f6', 600: '#2563eb', 700: '#1d4ed8',
+                        },
+                        slate: {
+                            950: '#020617'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Plus Jakarta Sans', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideIn { from { transform: translateX(-20px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes scaleIn { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+        .animate-fade-in { animation: fadeIn 0.4s ease-out; }
+        .animate-slide-in { animation: slideIn 0.4s ease-out; }
+        .animate-scale-in { animation: scaleIn 0.3s ease-out; }
+
+        .glass { background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(12px); }
+        .dark .glass { background: rgba(15, 23, 42, 0.8); }
+
+        /* Performance Optimizations */
+        * { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility; }
+        .tab-content, .card-premium { contain: content; will-change: transform, opacity; }
+        img { content-visibility: auto; }
+
+        /* Card Enhancements */
+        .card-premium {
+            @apply bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2rem] transition-all duration-300 hover:shadow-2xl hover:shadow-primary-500/10;
+        }
+        @media (min-width: 1024px) {
+            .card-premium:hover { transform: translateY(-0.25rem); }
+        }
+        
+        .card-inner-glow {
+            @apply relative overflow-hidden;
+        }
+        .card-inner-glow::after {
+            content: '';
+            @apply absolute inset-0 opacity-0 transition-opacity duration-300 pointer-events-none;
+            background: radial-gradient(circle at top right, rgba(59, 130, 246, 0.05), transparent 70%);
+        }
+        .card-premium:hover::after { @apply opacity-100; }
+
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
+        .dark .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        .sidebar-item.active {
+            background-color: #3b82f6;
+            color: white;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+
+        /* Responsive Mobile Layout */
+        @media (max-width: 1023px) {
+            #sidebar {
+                position: fixed;
+                left: -100%;
+                top: 0;
+                bottom: 0;
+                width: 280px;
+                z-index: 100;
+                box-shadow: 20px 0 50px rgba(0,0,0,0.1);
+            }
+            #sidebar.active { left: 0; }
+            #sidebarOverlay {
+                display: none;
+                position: fixed;
+                inset: 0;
+                background: rgba(0,0,0,0.5);
+                backdrop-filter: blur(4px);
+                z-index: 90;
+            }
+            #sidebarOverlay.active { display: block; }
+            main { width: 100%; }
+            .header-mobile-toggle { display: flex !important; }
+        }
+
+        /* Modal Styles */
+        .modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(2, 6, 23, 0.7);
+            backdrop-filter: blur(4px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 1rem;
+        }
+        .modal.active { display: flex; }
+        .modal-content {
+            background: white;
+            width: 100%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+            border-radius: 2rem;
+            padding: 2.5rem;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        }
+        .dark .modal-content { background: #0f172a; border: 1px border-slate-800; }
+
+        /* Input specific styling */
+        .form-input {
+            @apply w-full px-4 py-3 rounded-xl border-2 border-gray-100 dark:border-slate-800 bg-gray-50 dark:bg-slate-900/50 focus:border-primary-500 focus:bg-white dark:focus:bg-slate-900 outline-none transition-all duration-200;
+        }
+
+        /* Custom Animations */
+        @keyframes bounce-subtle {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-4px); }
+        }
+        .animate-bounce-subtle {
+            animation: bounce-subtle 2s infinite ease-in-out;
+        }
+
+        .animate-scale-in {
+            animation: scale-in 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        @keyframes scale-in {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+    </style>
+</head>
+<body class="h-full bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-300 overflow-hidden font-sans">
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="fixed inset-0 z-[3000] bg-white dark:bg-slate-950 flex items-center justify-center">
+        <div class="flex flex-col items-center">
+            <div class="w-16 h-16 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin"></div>
+            <p class="mt-4 font-bold text-slate-500 animate-pulse">Carregando Sistema...</p>
+        </div>
+    </div>
+
+    <!-- Login Screen -->
+    <div id="loginScreen" class="fixed inset-0 z-[2000] hidden bg-[url('https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&q=80')] bg-cover bg-center">
+        <div class="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"></div>
+        <div class="relative h-full flex items-center justify-center p-4">
+            <div class="w-full max-w-[450px] animate-scale-in">
+                <div class="glass p-8 md:p-12 rounded-[2.5rem] shadow-2xl border border-white/20">
+                    <div class="text-center mb-10">
+                        <div class="inline-flex items-center justify-center w-20 h-20 bg-primary-600 rounded-3xl mb-6 shadow-2xl shadow-primary-600/40">
+                            <i class="fas fa-dumbbell text-white text-3xl"></i>
+                        </div>
+                        <h1 class="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">Academia Pro</h1>
+                        <p class="text-slate-500 dark:text-slate-400 mt-2 font-medium">Gestão Profissional de Agendamentos</p>
+                    </div>
+
+                    <div id="loginOptions" class="space-y-4">
+                        <button onclick="auth.showUserSelection('master')" class="w-full flex items-center p-5 rounded-2xl bg-white/50 dark:bg-slate-800/50 border-2 border-transparent hover:border-purple-500 hover:bg-white dark:hover:bg-slate-800 transition-all group">
+                            <div class="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded-xl flex items-center justify-center mr-4 group-hover:bg-purple-600 group-hover:text-white transition-all">
+                                <i class="fas fa-shield-alt text-xl"></i>
+                            </div>
+                            <div class="text-left">
+                                <span class="block font-bold text-slate-900 dark:text-white text-lg">Departamento de Esportes</span>
+                                <span class="text-xs text-slate-500">Acesso Master / Administrativo</span>
+                            </div>
+                            <i class="fas fa-chevron-right ml-auto text-slate-300 group-hover:text-purple-500"></i>
+                        </button>
+
+                        <button onclick="auth.showUserSelection('coordenador')" class="w-full flex items-center p-5 rounded-2xl bg-white/50 dark:bg-slate-800/50 border-2 border-transparent hover:border-primary-500 hover:bg-white dark:hover:bg-slate-800 transition-all group">
+                            <div class="w-12 h-12 bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 rounded-xl flex items-center justify-center mr-4 group-hover:bg-primary-600 group-hover:text-white transition-all">
+                                <i class="fas fa-user-shield text-xl"></i>
+                            </div>
+                            <div class="text-left">
+                                <span class="block font-bold text-slate-900 dark:text-white text-lg">Coordenador</span>
+                                <span class="text-xs text-slate-500">Gestão e controle total</span>
+                            </div>
+                            <i class="fas fa-chevron-right ml-auto text-slate-300 group-hover:text-primary-500"></i>
+                        </button>
+
+                        <button onclick="auth.showUserSelection('professor')" class="w-full flex items-center p-5 rounded-2xl bg-white/50 dark:bg-slate-800/50 border-2 border-transparent hover:border-emerald-500 hover:bg-white dark:hover:bg-slate-800 transition-all group">
+                            <div class="w-12 h-12 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-xl flex items-center justify-center mr-4 group-hover:bg-emerald-600 group-hover:text-white transition-all">
+                                <i class="fas fa-user-tie text-xl"></i>
+                            </div>
+                            <div class="text-left">
+                                <span class="block font-bold text-slate-900 dark:text-white text-lg">Professor</span>
+                                <span class="text-xs text-slate-500">Agendamentos individuais</span>
+                            </div>
+                            <i class="fas fa-chevron-right ml-auto text-slate-300 group-hover:text-emerald-500"></i>
+                        </button>
+                    </div>
+
+                    <div id="userSelection" class="hidden space-y-4">
+                        <button onclick="auth.backToOptions()" class="text-primary-600 dark:text-primary-400 font-bold flex items-center mb-4 hover:underline">
+                            <i class="fas fa-arrow-left mr-2"></i> Voltar
+                        </button>
+                        <div id="userList" class="space-y-2 max-h-64 overflow-y-auto pr-2 custom-scrollbar"></div>
+                    </div>
+
+                    <div id="passwordEntry" class="hidden space-y-6">
+                        <button onclick="auth.backToUserSelection()" class="text-primary-600 dark:text-primary-400 font-bold flex items-center mb-4 hover:underline">
+                            <i class="fas fa-arrow-left mr-2"></i> Voltar
+                        </button>
+                        <div class="text-center p-4 bg-slate-100 dark:bg-slate-800/50 rounded-2xl">
+                            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">Entrando como</p>
+                            <p id="selectedUserName" class="text-lg font-bold text-slate-900 dark:text-white"></p>
+                        </div>
+                        <div class="relative">
+                            <input type="password" id="loginPassword" class="w-full px-4 py-4 rounded-xl border-2 border-transparent bg-slate-100 dark:bg-slate-800 focus:bg-white dark:focus:bg-slate-900 focus:border-primary-500 outline-none text-center text-2xl tracking-[0.5em] transition-all" placeholder="••••••" onkeydown="if(event.key==='Enter') auth.verifyPassword()">
+                            <button onclick="ui.togglePasswordVisibility('loginPassword', this)" class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-primary-500 transition-colors">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                        <button onclick="auth.verifyPassword()" class="w-full py-4 bg-primary-600 hover:bg-primary-700 text-white rounded-2xl font-bold text-lg shadow-xl shadow-primary-600/30 transition-all transform active:scale-95">
+                            Acessar Sistema
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main App Layout -->
+    <div id="appContainer" class="hidden h-full flex overflow-hidden">
+        <!-- Sidebar Overlay -->
+        <div id="sidebarOverlay" onclick="ui.toggleSidebar()" class="transition-opacity duration-300"></div>
+
+        <!-- Sidebar -->
+        <aside id="sidebar" class="w-72 flex-shrink-0 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col z-50 transition-all duration-300">
+            <div class="p-6 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-primary-600 rounded-xl flex items-center justify-center shadow-lg">
+                        <i class="fas fa-dumbbell text-white"></i>
+                    </div>
+                    <span class="text-xl font-extrabold tracking-tight text-slate-900 dark:text-white">Academia <span class="text-primary-600">Pro</span></span>
+                </div>
+                <button onclick="ui.toggleSidebar()" class="lg:hidden p-2 text-slate-400 hover:text-primary-500">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+
+            <nav class="flex-1 px-4 py-4 space-y-2 overflow-y-auto custom-scrollbar">
+                <p class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest px-4 mb-4">Menu Principal</p>
+                <button onclick="ui.switchTab('dashboard')" id="nav-dashboard" class="sidebar-item active w-full flex items-center px-4 py-3.5 rounded-xl font-bold text-sm transition-all">
+                    <i class="fas fa-chart-pie mr-3.5 text-lg"></i>Dashboard
+                </button>
+                <button onclick="ui.switchTab('schedules')" id="nav-schedules" class="sidebar-item w-full flex items-center px-4 py-3.5 rounded-xl font-bold text-sm text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all">
+                    <i class="fas fa-calendar-check mr-3.5 text-lg"></i>Agendamentos
+                </button>
+                <button onclick="ui.switchTab('maintenance')" id="nav-equipment" class="sidebar-item w-full flex items-center px-4 py-3.5 rounded-xl font-bold text-sm text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all">
+                    <i class="fas fa-tools mr-3.5 text-lg"></i>Manutenção
+                </button>
+                <button onclick="ui.switchTab('partners')" id="nav-partners" class="sidebar-item w-full flex items-center px-4 py-3.5 rounded-xl font-bold text-sm text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all">
+                    <i class="fas fa-id-card mr-3.5 text-lg"></i>Sócios (JSON)
+                </button>
+                <button onclick="ui.switchTab('users')" id="nav-users" class="sidebar-item w-full flex items-center px-4 py-3.5 rounded-xl font-bold text-sm text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all">
+                    <i class="fas fa-users-cog mr-3.5 text-lg"></i>Usuários
+                </button>
+            </nav>
+
+            <div class="p-4 border-t border-slate-200 dark:border-slate-800 space-y-4">
+                <button onclick="ui.toggleTheme()" class="w-full flex items-center px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-300 font-bold text-sm hover:bg-slate-100 transition-all">
+                    <i id="theme-icon" class="fas fa-moon mr-3"></i>
+                    <span id="theme-text">Modo Escuro</span>
+                </button>
+                
+                <div class="flex items-center gap-3 p-3 bg-primary-50 dark:bg-primary-900/20 rounded-2xl cursor-pointer hover:bg-primary-100 transition-all" onclick="auth.editProfile()">
+                    <div class="w-10 h-10 rounded-full bg-primary-600 flex items-center justify-center text-white font-bold">
+                        <span id="userInitial">E</span>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p id="userNameDisplay" class="text-sm font-bold truncate text-slate-900 dark:text-white">Everton Alves</p>
+                        <p id="userRoleDisplay" class="text-[10px] uppercase font-bold text-primary-600 dark:text-primary-400 tracking-widest">Coordenador</p>
+                    </div>
+                    <button onclick="auth.logout(event)" class="p-2 text-slate-400 hover:text-red-500 transition-colors">
+                        <i class="fas fa-power-off"></i>
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 flex flex-col min-w-0 relative">
+            <!-- Content Header -->
+            <header class="h-20 flex-shrink-0 flex items-center justify-between px-4 md:px-8 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
+                <div class="flex items-center gap-4">
+                    <button onclick="ui.toggleSidebar()" class="header-mobile-toggle hidden w-10 h-10 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <h2 id="pageTitle" class="text-lg md:text-2xl font-extrabold tracking-tight truncate">Dashboard Analítico</h2>
+                </div>
+                <div class="flex items-center gap-4">
+                    <div id="realtimeStatus" class="hidden sm:flex items-center px-3 py-1.5 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 text-xs font-bold">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500 mr-2 animate-pulse"></span>
+                        Firestore Conectado
+                    </div>
+                </div>
+            </header>
+
+            <!-- Scrollable Content -->
+            <div id="scrollContent" class="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar bg-slate-50 dark:bg-slate-950/50">
+                
+                <!-- Dashboard Tab -->
+                <div id="tab-dashboard" class="tab-content active space-y-8 animate-fade-in">
+                    <!-- Stats Grid -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+                        <div class="card-premium p-6 card-inner-glow">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <p class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">Agendamentos Hoje</p>
+                                    <h3 id="stat-schedules" class="text-3xl md:text-4xl font-extrabold mt-2 tracking-tight text-slate-900 dark:text-white">0</h3>
+                                </div>
+                                <div class="w-12 h-12 md:w-14 md:h-14 bg-primary-500/10 text-primary-500 rounded-2xl flex items-center justify-center shadow-inner">
+                                    <i class="fas fa-calendar-day text-xl md:text-2xl"></i>
+                                </div>
+                            </div>
+                            <div class="mt-4 flex items-center text-[10px] font-bold text-emerald-500 bg-emerald-500/10 w-fit px-2 py-1 rounded-lg">
+                                <i class="fas fa-arrow-up mr-1"></i> +12% vs ontem
+                            </div>
+                        </div>
+                        <div class="card-premium p-6 card-inner-glow">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <p class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">Taxa de Ocupação</p>
+                                    <h3 id="stat-occupancy" class="text-3xl md:text-4xl font-extrabold mt-2 tracking-tight text-slate-900 dark:text-white">0%</h3>
+                                </div>
+                                <div class="w-12 h-12 md:w-14 md:h-14 bg-emerald-500/10 text-emerald-500 rounded-2xl flex items-center justify-center shadow-inner">
+                                    <i class="fas fa-percentage text-xl md:text-2xl"></i>
+                                </div>
+                            </div>
+                            <div class="mt-4 flex items-center text-[10px] font-bold text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800 w-fit px-2 py-1 rounded-lg">
+                                <i class="fas fa-clock mr-1"></i> Pico: 18h - 20h
+                            </div>
+                        </div>
+                        <div class="card-premium p-6 card-inner-glow">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <p class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">Alunos Ativos</p>
+                                    <h3 id="stat-students" class="text-3xl md:text-4xl font-extrabold mt-2 tracking-tight text-slate-900 dark:text-white">0</h3>
+                                </div>
+                                <div class="w-12 h-12 md:w-14 md:h-14 bg-purple-500/10 text-purple-500 rounded-2xl flex items-center justify-center shadow-inner">
+                                    <i class="fas fa-users text-xl md:text-2xl"></i>
+                                </div>
+                            </div>
+                            <div class="mt-4 flex items-center text-[10px] font-bold text-purple-500 bg-purple-500/10 w-fit px-2 py-1 rounded-lg">
+                                <i class="fas fa-check-circle mr-1"></i> Sistema Online
+                            </div>
+                        </div>
+                        <div class="card-premium p-6 card-inner-glow border-red-500/20">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <p class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">Alertas Manut.</p>
+                                    <h3 id="stat-alerts" class="text-3xl md:text-4xl font-extrabold mt-2 tracking-tight text-red-500 dark:text-red-400">0</h3>
+                                </div>
+                                <div class="w-12 h-12 md:w-14 md:h-14 bg-red-500/10 text-red-500 rounded-2xl flex items-center justify-center shadow-inner">
+                                    <i class="fas fa-exclamation-triangle text-xl md:text-2xl"></i>
+                                </div>
+                            </div>
+                            <div class="mt-4 flex items-center text-[10px] font-bold text-red-500 bg-red-500/10 w-fit px-2 py-1 rounded-lg">
+                                <i class="fas fa-wrench mr-1"></i> Ação Requerida
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Charts Grid -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        <div class="card p-8 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2rem]">
+                            <h4 class="text-lg font-bold mb-6 flex items-center gap-2">
+                                <i class="fas fa-chart-line text-primary-600"></i> Fluxo de Agendamentos
+                            </h4>
+                            <div class="h-64"><canvas id="chartFlow"></canvas></div>
+                        </div>
+                        <div class="card p-8 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2rem]">
+                            <h4 class="text-lg font-bold mb-6 flex items-center gap-2">
+                                <i class="fas fa-user-clock text-emerald-600"></i> Ranking de Professores
+                            </h4>
+                            <div id="profRanking" class="space-y-4">
+                                <p class="text-slate-400 italic text-center py-10 text-sm">Sem dados suficientes...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Schedules Tab -->
+                <div id="tab-schedules" class="tab-content space-y-6 animate-fade-in">
+                    <div class="flex flex-col md:flex-row justify-between gap-4">
+                        <div class="relative flex-1 max-w-md">
+                            <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                            <input type="text" id="searchSchedules" class="w-full pl-12 pr-4 py-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 outline-none focus:border-primary-500 transition-all font-medium" placeholder="Buscar por sócio ou professor...">
+                        </div>
+                        <button onclick="ui.openModal('modalSchedule')" class="px-6 py-3.5 bg-primary-600 hover:bg-primary-700 text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-primary-600/20 transition-all">
+                            <i class="fas fa-plus"></i> Novo Agendamento
+                        </button>
+                    </div>
+
+                    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2rem] overflow-hidden shadow-sm">
+                        <div class="overflow-x-auto custom-scrollbar">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="bg-slate-50 dark:bg-slate-800/50">
+                                        <th class="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-slate-200 dark:border-slate-800">Sócio / Dependente</th>
+                                        <th class="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-slate-200 dark:border-slate-800">Título</th>
+                                        <th class="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-slate-200 dark:border-slate-800">Professor</th>
+                                        <th class="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-slate-200 dark:border-slate-800">Agendado por</th>
+                                        <th class="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-slate-200 dark:border-slate-800">Data e Hora</th>
+                                        <th class="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-slate-200 dark:border-slate-800">Status</th>
+                                        <th class="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-slate-200 dark:border-slate-800">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tableSchedules" class="divide-y divide-slate-100 dark:divide-slate-800"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Maintenance Tab -->
+                <div id="tab-maintenance" class="tab-content space-y-6 animate-fade-in">
+                    <!-- Sub-tabs Navigation -->
+                    <div class="flex gap-2 md:gap-4 border-b border-slate-200 dark:border-slate-800 pb-4 overflow-x-auto custom-scrollbar whitespace-nowrap">
+                        <button onclick="ui.switchMaintenanceSubTab('m-dashboard')" id="nav-m-dashboard" class="px-4 md:px-6 py-2 rounded-xl font-bold text-xs md:text-sm transition-all bg-primary-600 text-white shadow-lg shadow-primary-600/20">
+                            <i class="fas fa-chart-line mr-2"></i>Dashboard
+                        </button>
+                        <button onclick="ui.switchMaintenanceSubTab('m-equipments')" id="nav-m-equipments" class="px-4 md:px-6 py-2 rounded-xl font-bold text-xs md:text-sm text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all">
+                            <i class="fas fa-dumbbell mr-2"></i>Equipamentos
+                        </button>
+                        <button onclick="ui.switchMaintenanceSubTab('m-logs')" id="nav-m-logs" class="px-4 md:px-6 py-2 rounded-xl font-bold text-xs md:text-sm text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all">
+                            <i class="fas fa-history mr-2"></i>Histórico
+                        </button>
+                        <button onclick="ui.switchMaintenanceSubTab('m-pendencies')" id="nav-m-pendencies" class="px-4 md:px-6 py-2 rounded-xl font-bold text-xs md:text-sm text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all">
+                            <i class="fas fa-exclamation-circle mr-2"></i>Pendências
+                        </button>
+                    </div>
+
+                        <div id="m-dashboard" class="maintenance-sub-tab space-y-8 animate-fade-in">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+                            <div class="card-premium p-6 card-inner-glow">
+                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Última Manutenção</p>
+                                <h3 id="m-stat-last" class="text-xl md:text-2xl font-extrabold mt-2">--/--/----</h3>
+                                <p class="text-[10px] text-slate-500 mt-1" id="m-stat-last-resp">Responsável: ---</p>
+                            </div>
+                            <div class="card-premium p-6 card-inner-glow border-primary-500/20">
+                                <p class="text-[10px] font-bold text-primary-500 uppercase tracking-widest">Próxima Manutenção</p>
+                                <h3 id="m-stat-next" class="text-xl md:text-2xl font-extrabold mt-2">--/--/----</h3>
+                                <div id="m-status-badge" class="mt-2 inline-block px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest">Calculando...</div>
+                            </div>
+                            <div class="card-premium p-6 card-inner-glow">
+                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total Equipamentos</p>
+                                <h3 id="m-stat-total" class="text-3xl md:text-4xl font-extrabold mt-2">0</h3>
+                            </div>
+                            <div class="card-premium p-6 card-inner-glow border-red-500/20">
+                                <p class="text-[10px] font-bold text-red-500 uppercase tracking-widest">Equip. com Problema</p>
+                                <h3 id="m-stat-problems" class="text-3xl md:text-4xl font-extrabold mt-2 text-red-500">0</h3>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
+                            <div class="card-premium p-8">
+                                <h4 class="text-lg font-bold mb-6 flex items-center gap-2">
+                                    <i class="fas fa-tools text-primary-600"></i> Status Geral da Frota
+                                </h4>
+                                <div class="space-y-4">
+                                    <div class="flex justify-between items-center p-4 bg-emerald-500/10 rounded-2xl">
+                                        <span class="font-bold text-emerald-600">Em Dia</span>
+                                        <span id="m-count-ok" class="font-black text-emerald-600 text-xl">0</span>
+                                    </div>
+                                    <div class="flex justify-between items-center p-4 bg-orange-500/10 rounded-2xl">
+                                        <span class="font-bold text-orange-600">Pendente</span>
+                                        <span id="m-count-pending" class="font-black text-orange-600 text-xl">0</span>
+                                    </div>
+                                    <div class="flex justify-between items-center p-4 bg-red-500/10 rounded-2xl">
+                                        <span class="font-bold text-red-600">Em Manutenção</span>
+                                        <span id="m-count-repair" class="font-black text-red-600 text-xl">0</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card-premium p-8 overflow-hidden">
+                                <div class="flex justify-between items-center mb-6">
+                                    <h4 class="text-lg font-bold flex items-center gap-2">
+                                        <i class="fas fa-exclamation-triangle text-red-500"></i> Pendências Ativas
+                                    </h4>
+                                    <button onclick="ui.switchMaintenanceSubTab('m-pendencies')" class="text-xs font-bold text-primary-600 hover:underline">Ver todas</button>
+                                </div>
+                                <div id="m-dashboard-pendencies" class="space-y-3 max-h-64 overflow-y-auto custom-scrollbar pr-2">
+                                    <p class="text-slate-400 italic text-center py-10 text-sm">Nenhuma pendência crítica.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex justify-center pt-8 border-t border-slate-200 dark:border-slate-800">
+                            <button onclick="logic.handleWeeklyMaintenance()" class="px-10 py-5 bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 text-white rounded-[2rem] font-black text-lg shadow-2xl shadow-primary-600/30 transition-all transform hover:-translate-y-1 active:scale-95 flex items-center gap-3">
+                                <i class="fas fa-calendar-check text-2xl"></i>
+                                REGISTRAR MANUTENÇÃO DA SEMANA
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- M-Equipments Sub-tab -->
+                    <div id="m-equipments" class="maintenance-sub-tab hidden space-y-6 animate-fade-in">
+                        <div class="flex flex-col md:flex-row justify-between gap-4 bg-white dark:bg-slate-900 p-4 md:p-6 rounded-3xl border border-slate-200 dark:border-slate-800">
+                            <div class="flex flex-col sm:flex-row flex-1 gap-3">
+                                <div class="relative flex-1 sm:max-w-xs">
+                                    <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                                    <input type="text" id="searchEquip" class="w-full pl-12 pr-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 border-none outline-none focus:ring-2 focus:ring-primary-500 transition-all text-sm" placeholder="Buscar..." onkeyup="ui.renderEquipment()">
+                                </div>
+                                <div class="flex gap-2">
+                                    <select id="filterEquipStatus" class="flex-1 sm:w-32 px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 border-none text-[10px] font-bold outline-none" onchange="ui.renderEquipment()">
+                                        <option value="">Status</option>
+                                        <option value="Ativo">Ativo</option>
+                                        <option value="Em manutenção">Manutenção</option>
+                                        <option value="Inativo">Inativo</option>
+                                    </select>
+                                    <select id="filterEquipCat" class="flex-1 sm:w-32 px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 border-none text-[10px] font-bold outline-none" onchange="ui.renderEquipment()">
+                                        <option value="">Categorias</option>
+                                        <option>Musculação</option>
+                                        <option>Cardio</option>
+                                        <option>Bike</option>
+                                        <option>Esteira</option>
+                                        <option>Funcional</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="flex gap-2">
+                                <button onclick="logic.importInitialEquipment()" class="flex-1 sm:flex-none px-4 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-600 dark:text-slate-300 rounded-xl font-bold text-[10px] transition-all flex items-center justify-center gap-2">
+                                    <i class="fas fa-file-import"></i> <span class="hidden sm:inline">Importar</span>
+                                </button>
+                                <button onclick="logic.prepareEquipmentModal()" class="flex-1 sm:flex-none px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-xl font-bold text-[10px] flex items-center justify-center gap-2 shadow-lg shadow-primary-600/20 transition-all">
+                                    <i class="fas fa-plus"></i> Novo
+                                </button>
+                            </div>
+                        </div>
+                        <div id="equipGrid" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6"></div>
+                    </div>
+
+                    <!-- M-Logs Sub-tab -->
+                    <div id="m-logs" class="maintenance-sub-tab hidden space-y-6 animate-fade-in">
+                        <div class="flex justify-between items-center bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800">
+                            <h3 class="text-lg font-extrabold">Histórico de Manutenções</h3>
+                            <div class="flex gap-3">
+                                <button onclick="logic.prepareManualMaintenanceModal()" class="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-xl font-bold text-xs transition-all flex items-center gap-2">
+                                    <i class="fas fa-plus"></i> Novo Registro
+                                </button>
+                                <button onclick="logic.exportMaintenanceReport()" class="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 rounded-xl font-bold text-xs transition-all flex items-center gap-2">
+                                    <i class="fas fa-file-pdf"></i> Gerar Relatório
+                                </button>
+                            </div>
+                        </div>
+                        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2rem] overflow-hidden">
+                            <table class="w-full text-left">
+                                <thead class="bg-slate-50 dark:bg-slate-800/50">
+                                    <tr>
+                                        <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Data</th>
+                                        <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Tipo</th>
+                                        <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Responsável</th>
+                                        <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Equipamentos</th>
+                                        <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Observações</th>
+                                        <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tableMaintenanceLogs" class="divide-y divide-slate-100 dark:divide-slate-800"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- M-Pendencies Sub-tab -->
+                    <div id="m-pendencies" class="maintenance-sub-tab hidden space-y-6 animate-fade-in">
+                        <div class="flex justify-between items-center bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800">
+                            <h3 class="text-lg font-extrabold">Controle de Pendências</h3>
+                            <button onclick="ui.openModal('modalPendency')" class="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-red-600/20 transition-all">
+                                <i class="fas fa-plus"></i> Registrar Problema
+                            </button>
+                        </div>
+                        <div id="pendencyGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+                    </div>
+                </div>
+
+                <!-- Partners Tab (JSON) -->
+                <div id="tab-partners" class="tab-content space-y-6 animate-fade-in">
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <!-- JSON Actions -->
+                        <div class="lg:col-span-1 space-y-6">
+                            <div class="card-premium p-6 card-inner-glow">
+                                <h3 class="text-lg font-extrabold mb-4">Ações JSON</h3>
+                                <div class="space-y-4">
+                                    <div>
+                                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Importar Base de Dados</label>
+                                        <textarea id="jsonImportArea" class="form-input h-32 text-xs font-mono" placeholder='[{"title":"100","name":"João Silva","dependents":["Maria","Pedro"]}]'></textarea>
+                                        <button onclick="logic.importPartnersJSON()" class="w-full mt-3 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-xl font-bold text-xs transition-all shadow-lg shadow-primary-600/20">
+                                            <i class="fas fa-file-import mr-2"></i> Importar JSON
+                                        </button>
+                                    </div>
+                                    <div class="pt-4 border-t border-slate-100 dark:border-slate-800">
+                                        <button onclick="logic.exportPartnersJSON()" class="w-full py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl font-bold text-xs transition-all">
+                                            <i class="fas fa-file-export mr-2"></i> Exportar Base Atual
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="card-premium p-6 card-inner-glow bg-emerald-500/5 border-emerald-500/10">
+                                <h4 class="text-sm font-bold text-emerald-600 mb-2">Dica de Formato</h4>
+                                <p class="text-xs text-slate-500 leading-relaxed">
+                                    O formato JSON deve ser uma lista de objetos contendo <b>title</b>, <b>name</b> e uma lista opcional de <b>dependents</b>.
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Partners List -->
+                        <div class="lg:col-span-2 space-y-6">
+                            <div class="flex justify-between items-center bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800">
+                                <div>
+                                    <h3 class="text-lg font-extrabold">Base de Sócios</h3>
+                                    <p class="text-sm text-slate-500 font-medium">Lista de títulos e beneficiários cadastrados</p>
+                                </div>
+                                <button onclick="ui.openModal('modalPartner')" class="px-6 py-3.5 bg-primary-600 hover:bg-primary-700 text-white rounded-2xl font-bold flex items-center gap-2 shadow-lg shadow-primary-600/20 transition-all">
+                                    <i class="fas fa-plus"></i> Novo Sócio
+                                </button>
+                            </div>
+
+                            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2rem] overflow-hidden">
+                                <div class="overflow-x-auto">
+                                    <table class="w-full text-left">
+                                        <thead class="bg-slate-50 dark:bg-slate-800/50">
+                                            <tr>
+                                                <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Título</th>
+                                                <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Titular / Dependentes</th>
+                                                <th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Ações</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="tablePartners" class="divide-y divide-slate-100 dark:divide-slate-800"></tbody>
+                                    </table>
+                                </div>
+                                <div id="btnSeeMorePartners" class="p-4 border-t border-slate-100 dark:border-slate-800 text-center hidden">
+                                    <button onclick="ui.togglePartnersVisibility()" class="text-sm font-bold text-primary-600 hover:text-primary-700 transition-colors uppercase tracking-widest flex items-center justify-center gap-2 w-full py-2">
+                                        <span id="btnSeeMorePartnersText">Ver Mais</span>
+                                        <i id="btnSeeMorePartnersIcon" class="fas fa-chevron-down"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Users Tab -->
+                <div id="tab-users" class="tab-content space-y-6 animate-fade-in">
+                    <div class="flex justify-between items-center bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800">
+                        <div>
+                            <h3 class="text-lg font-extrabold">Gestão de Equipe</h3>
+                            <p class="text-sm text-slate-500 font-medium">Controle de acessos e permissões de professores</p>
+                        </div>
+                        <button onclick="logic.prepareUserModal()" class="px-6 py-3.5 bg-primary-600 hover:bg-primary-700 text-white rounded-2xl font-bold flex items-center gap-2 shadow-lg shadow-primary-600/20 transition-all">
+                    <i class="fas fa-user-plus"></i> Novo Professor
+                </button>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="userGrid"></div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- Modais -->
+    
+    <!-- Modal Agendamento -->
+    <div id="modalSchedule" class="modal">
+        <div class="modal-content animate-scale-in">
+            <div class="flex justify-between items-center mb-8">
+                <h3 class="text-2xl font-extrabold">Novo Agendamento</h3>
+                <button onclick="ui.closeModal('modalSchedule')" class="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"><i class="fas fa-times"></i></button>
+            </div>
+            <form onsubmit="logic.handleScheduleSubmit(event)" class="space-y-5">
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2">Título do Sócio</label>
+                    <input type="text" id="scheduleTitle" class="form-input" placeholder="Digite o número do título" required onkeyup="logic.searchPartner(this.value)">
+                </div>
+                <div id="partnerResults" class="hidden">
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Selecione o Beneficiário</label>
+                    <div id="partnerList" class="custom-scrollbar overflow-y-auto max-h-48 border-2 border-slate-100 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900/50"></div>
+                    <input type="hidden" id="selectedPartnerName">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Professor Responsável</label>
+                    <select id="scheduleProfessor" class="form-input" required></select>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Data</label>
+                        <input type="date" class="form-input" required>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Horário</label>
+                        <input type="time" class="form-input" required>
+                    </div>
+                </div>
+                <button type="submit" class="w-full py-4 bg-primary-600 hover:bg-primary-700 text-white rounded-2xl font-bold text-lg transition-all shadow-xl shadow-primary-600/20 mt-4">Confirmar Agendamento</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Equipamento -->
+    <div id="modalEquipment" class="modal">
+        <div class="modal-content animate-scale-in">
+            <div class="flex justify-between items-center mb-8">
+                <h3 id="equipmentModalTitle" class="text-2xl font-extrabold">Cadastro de Equipamento</h3>
+                <button onclick="ui.closeModal('modalEquipment')" class="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"><i class="fas fa-times"></i></button>
+            </div>
+            <form onsubmit="logic.handleEquipmentSubmit(event)" class="space-y-5">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2">Código/ID</label>
+                        <input type="text" id="eqId" class="form-input" placeholder="Ex: EST-001" required>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2">Categoria</label>
+                        <select id="eqCat" class="form-input" required>
+                            <option>Musculação</option>
+                            <option>Cardio</option>
+                            <option>Bike</option>
+                            <option>Esteira</option>
+                            <option>Funcional</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2">Nome do Equipamento</label>
+                    <input type="text" id="eqName" class="form-input" placeholder="Ex: Esteira Matrix T5x" required>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2">Localização</label>
+                        <input type="text" id="eqLocal" class="form-input" placeholder="Ex: PISO ENTRADA" required>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2">Marca / Fabricante</label>
+                        <input type="text" id="eqBrand" class="form-input" placeholder="Ex: LIFE FITNESS">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2">Status Operacional</label>
+                    <select id="eqStatus" class="form-input" required>
+                        <option value="Ativo">Ativo (Operacional)</option>
+                        <option value="Em manutenção">Em manutenção (Reparo)</option>
+                        <option value="Inativo">Inativo (Fora de Uso)</option>
+                    </select>
+                </div>
+                <button type="submit" class="w-full py-4 bg-primary-600 hover:bg-primary-700 text-white rounded-2xl font-bold text-lg transition-all mt-4">Salvar Equipamento</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Usuário -->
+    <div id="modalUser" class="modal">
+        <div class="modal-content animate-scale-in">
+            <div class="flex justify-between items-center mb-8">
+                <h3 id="userModalTitle" class="text-2xl font-extrabold">Novo Professor</h3>
+                <button onclick="ui.closeModal('modalUser')" class="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"><i class="fas fa-times"></i></button>
+            </div>
+            <form id="userForm" onsubmit="logic.handleUserSubmit(event)" class="space-y-5">
+                <input type="hidden" id="editUserId">
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Nome Completo</label>
+                    <input type="text" id="uName" class="form-input" placeholder="Ex: Ricardo Silva" required>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Usuário de Acesso</label>
+                    <input type="text" id="uUser" class="form-input" placeholder="Ex: ricardo.silva" required>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Senha de Acesso</label>
+                    <input type="password" id="uPass" class="form-input" placeholder="••••••" required>
+                </div>
+                <div id="uRoleArea">
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Perfil do Usuário</label>
+                    <select id="uRole" class="form-input" required>
+                        <option value="professor">Professor</option>
+                        <option value="coordenador">Coordenador</option>
+                    </select>
+                </div>
+                <button type="submit" class="w-full py-4 bg-primary-600 hover:bg-primary-700 text-white rounded-2xl font-bold text-lg transition-all mt-4">Salvar Usuário</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Sócio -->
+    <div id="modalPartner" class="modal">
+        <div class="modal-content animate-scale-in">
+            <div class="flex justify-between items-center mb-8">
+                <h3 id="partnerModalTitle" class="text-2xl font-extrabold">Novo Sócio</h3>
+                <button onclick="ui.closeModal('modalPartner')" class="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"><i class="fas fa-times"></i></button>
+            </div>
+            <form onsubmit="logic.handlePartnerSubmit(event)" class="space-y-5">
+                <input type="hidden" id="editPartnerId">
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2">Número do Título</label>
+                    <input type="text" id="pTitle" class="form-input" placeholder="Ex: 100" required>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2">Nome do Titular</label>
+                    <input type="text" id="pName" class="form-input" placeholder="Ex: João da Silva" required>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2">Dependentes (Separados por vírgula)</label>
+                    <input type="text" id="pDependents" class="form-input" placeholder="Ex: Maria Silva, Pedro Silva">
+                </div>
+                <button type="submit" class="w-full py-4 bg-primary-600 hover:bg-primary-700 text-white rounded-2xl font-bold text-lg transition-all mt-4 shadow-xl shadow-primary-600/20">Salvar Sócio</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Pendência -->
+     <div id="modalPendency" class="modal">
+         <div class="modal-content animate-scale-in">
+             <div class="flex justify-between items-center mb-8">
+                 <h3 class="text-2xl font-extrabold text-red-600">Registrar Problema</h3>
+                 <button onclick="ui.closeModal('modalPendency')" class="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"><i class="fas fa-times"></i></button>
+             </div>
+             <form onsubmit="logic.handlePendencySubmit(event)" class="space-y-5">
+                 <div>
+                     <label class="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2">Equipamento</label>
+                     <select id="penEquip" class="form-input" required></select>
+                 </div>
+                 <div>
+                     <label class="block text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2">Descrição do Problema</label>
+                     <textarea id="penDesc" class="form-input h-24" placeholder="Descreva o defeito encontrado..." required></textarea>
+                 </div>
+                 <button type="submit" class="w-full py-4 bg-red-600 hover:bg-red-700 text-white rounded-2xl font-bold text-lg transition-all mt-4 shadow-xl shadow-red-600/20">Registrar Pendência</button>
+             </form>
+         </div>
+     </div>
+
+    <!-- Modal Registro de Manutenção Manual -->
+    <div id="modalManualMaintenance" class="modal">
+        <div class="modal-content animate-scale-in">
+            <div class="flex justify-between items-center mb-8">
+                <h3 class="text-2xl font-extrabold">Registrar Manutenção</h3>
+                <button onclick="ui.closeModal('modalManualMaintenance')" class="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"><i class="fas fa-times"></i></button>
+            </div>
+            <form onsubmit="logic.handleManualMaintenanceSubmit(event)" class="space-y-5">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Tipo</label>
+                        <select id="mType" class="form-input" required>
+                            <option value="Preventiva">Preventiva</option>
+                            <option value="Corretiva">Corretiva</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Data</label>
+                        <input type="date" id="mDate" class="form-input" required>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Equipamentos (Selecione um ou mais)</label>
+                    <div id="mEquipList" class="max-h-40 overflow-y-auto border-2 border-slate-100 dark:border-slate-800 rounded-xl p-3 space-y-2 custom-scrollbar bg-slate-50 dark:bg-slate-900/50">
+                        <!-- Renderizado via JS -->
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Observações / Detalhes</label>
+                    <textarea id="mObs" class="form-input h-20" placeholder="O que foi feito?"></textarea>
+                </div>
+                <button type="submit" class="w-full py-4 bg-primary-600 hover:bg-primary-700 text-white rounded-2xl font-bold text-lg transition-all mt-4 shadow-xl shadow-primary-600/20">Salvar Registro</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // --- CONFIGURAÇÃO DO FIREBASE ---
+        const firebaseConfig = { 
+            apiKey: "AIzaSyCEOpiQMMqpdD0AmNC97Z4cLp16EQlmkgI", 
+            authDomain: "academia-e1c71.firebaseapp.com", 
+            databaseURL: "https://academia-e1c71-default-rtdb.firebaseio.com", 
+            projectId: "academia-e1c71", 
+            storageBucket: "academia-e1c71.firebasestorage.app", 
+            messagingSenderId: "745225128785", 
+            appId: "1:745225128785:web:862b72005cf3aa0b5d6170" 
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // --- GLOBAL STATE ---
+        const state = {
+            currentUser: JSON.parse(localStorage.getItem('gym_currentUser')),
+            theme: localStorage.getItem('gym_theme') || 'light',
+            users: [
+                { id: 'master-admin', name: 'Departamento de Esportes', role: 'master', username: 'esportes', password: 'ESPORTESDP2026' },
+                { id: 'local-admin', name: 'Everton Alves Da Silva', role: 'coordenador', username: 'admin', password: '123' }
+            ],
+            schedules: [],
+            equipment: [],
+            maintenanceLogs: [],
+            pendencies: [],
+            partners: [],
+            showAllPartners: false,
+            charts: {}
+        };
+
+        // --- AUTH MODULE ---
+        window.auth = {
+            async loadUsers() {
+                try {
+                    const snap = await db.collection('users').get();
+                    let firebaseUsers = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    
+                    // Garantir que o Departamento de Esportes (Master) exista no Firestore
+                    const masterExists = firebaseUsers.find(u => u.role === 'master');
+                    if (!masterExists) {
+                        const masterData = { name: 'Departamento de Esportes', role: 'master', username: 'esportes', password: 'ESPORTESDP2026' };
+                        const newDoc = await db.collection('users').add(masterData);
+                        firebaseUsers.push({ id: newDoc.id, ...masterData });
+                        console.log("Acesso Master (Departamento de Esportes) adicionado ao Firestore.");
+                    }
+
+                    // Garantir que o Everton (Coordenador) exista no Firestore
+                    const evertonExists = firebaseUsers.find(u => u.name === 'Everton Alves Da Silva');
+                    if (!evertonExists) {
+                        const evertonData = { name: 'Everton Alves Da Silva', role: 'coordenador', username: 'admin', password: '123' };
+                        const newDoc = await db.collection('users').add(evertonData);
+                        firebaseUsers.push({ id: newDoc.id, ...evertonData });
+                        console.log("Coordenador Everton adicionado ao Firestore.");
+                    }
+
+                    if (firebaseUsers.length > 0) {
+                        state.users = firebaseUsers;
+                    }
+                } catch (error) {
+                    console.warn("Usando usuários locais (Firebase não configurado)");
+                }
+                this.updateProfessorSelects();
+            },
+
+            updateProfessorSelects() {
+                const select = document.getElementById('scheduleProfessor');
+                if (select) {
+                    const profs = state.users.filter(u => u.role === 'professor');
+                    select.innerHTML = profs.map(p => `<option value="${p.name}">${p.name}</option>`).join('');
+                }
+            },
+
+            showUserSelection(role) {
+                const list = document.getElementById('userList');
+                const filtered = state.users.filter(u => u.role === role);
+                
+                if (filtered.length === 0) {
+                    list.innerHTML = `<div class="p-8 text-center"><p class="text-sm text-slate-500 mb-4">Nenhum ${role} encontrado.</p><button onclick="auth.loadUsers().then(() => auth.showUserSelection('${role}'))" class="text-xs font-bold text-primary-600 uppercase">Tentar Novamente</button></div>`;
+                } else {
+                    list.innerHTML = filtered.map(u => `
+                        <button onclick="auth.preparePassword('${u.id}')" class="w-full text-left p-4 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-all flex items-center gap-3 bg-white dark:bg-slate-800 group">
+                            <div class="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center font-bold text-slate-500 group-hover:bg-primary-600 group-hover:text-white transition-all">${u.name.charAt(0)}</div>
+                            <span class="font-bold text-slate-700 dark:text-slate-200">${u.name}</span>
+                        </button>
+                    `).join('');
+                }
+                
+                document.getElementById('loginOptions').classList.add('hidden');
+                document.getElementById('userSelection').classList.remove('hidden');
+                document.getElementById('passwordEntry').classList.add('hidden');
+            },
+
+            preparePassword(id) {
+                state.tempUserId = id;
+                const user = state.users.find(u => u.id === id);
+                if (!user) return alert('Usuário não encontrado!');
+                
+                document.getElementById('selectedUserName').textContent = user.name;
+                document.getElementById('userSelection').classList.add('hidden');
+                document.getElementById('passwordEntry').classList.remove('hidden');
+                document.getElementById('loginPassword').value = '';
+                setTimeout(() => document.getElementById('loginPassword').focus(), 100);
+            },
+
+            verifyPassword() {
+                const pass = document.getElementById('loginPassword').value;
+                const user = state.users.find(u => u.id === state.tempUserId);
+                if (user && user.password === pass) {
+                    state.currentUser = user;
+                    localStorage.setItem('gym_currentUser', JSON.stringify(user));
+                    ui.showApp();
+                } else {
+                    alert('Senha incorreta!');
+                }
+            },
+
+            backToOptions() {
+                document.getElementById('loginOptions').classList.remove('hidden');
+                document.getElementById('userSelection').classList.add('hidden');
+            },
+
+            backToUserSelection() {
+                document.getElementById('userSelection').classList.remove('hidden');
+                document.getElementById('passwordEntry').classList.add('hidden');
+            },
+
+            logout(e) {
+                if (e) e.stopPropagation();
+                if (confirm('Deseja sair do sistema?')) {
+                    state.currentUser = null;
+                    localStorage.removeItem('gym_currentUser');
+                    location.reload();
+                }
+            },
+
+            editProfile() {
+                logic.editUser(state.currentUser.id);
+            }
+        };
+
+        // --- UI MODULE ---
+        window.ui = {
+            init() {
+                try {
+                    this.applyTheme();
+                    if (state.currentUser) {
+                        this.showApp();
+                    } else {
+                        this.showLogin();
+                    }
+                } catch (error) {
+                    console.error("Erro na inicialização:", error);
+                } finally {
+                    const overlay = document.getElementById('loadingOverlay');
+                    if (overlay) overlay.classList.add('hidden');
+                }
+            },
+
+            showLogin() {
+                document.getElementById('loginScreen').classList.remove('hidden');
+                document.getElementById('appContainer').classList.add('hidden');
+                auth.loadUsers().catch(err => console.warn("Erro ao carregar usuários iniciais:", err));
+            },
+
+            showApp() {
+                document.getElementById('loginScreen').classList.add('hidden');
+                document.getElementById('appContainer').classList.remove('hidden');
+                
+                if (state.currentUser) {
+                    document.getElementById('userNameDisplay').textContent = state.currentUser.name;
+                    document.getElementById('userRoleDisplay').textContent = state.currentUser.role;
+                    document.getElementById('userInitial').textContent = state.currentUser.name.charAt(0);
+                }
+                
+                this.applyPermissions();
+                logic.syncAll().catch(err => console.warn("Erro na sincronização inicial:", err));
+            },
+
+            applyTheme() {
+                const icon = document.getElementById('theme-icon');
+                const text = document.getElementById('theme-text');
+                if (state.theme === 'dark') {
+                    document.documentElement.classList.add('dark');
+                    if (icon) icon.className = 'fas fa-sun mr-3';
+                    if (text) text.textContent = 'Modo Claro';
+                } else {
+                    document.documentElement.classList.remove('dark');
+                    if (icon) icon.className = 'fas fa-moon mr-3';
+                    if (text) text.textContent = 'Modo Escuro';
+                }
+            },
+
+            toggleTheme() {
+                state.theme = state.theme === 'light' ? 'dark' : 'light';
+                localStorage.setItem('gym_theme', state.theme);
+                this.applyTheme();
+            },
+
+            switchTab(tabId) {
+                document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
+                
+                const tab = document.getElementById(`tab-${tabId}`);
+                const navId = tabId === 'maintenance' ? 'nav-equipment' : `nav-${tabId}`;
+                const nav = document.getElementById(navId);
+                
+                if (tab) tab.classList.add('active');
+                if (nav) nav.classList.add('active');
+                
+                if (tabId === 'maintenance') {
+                    this.switchMaintenanceSubTab('m-dashboard');
+                }
+
+                const titles = { 
+                    'dashboard': 'Dashboard Analítico', 
+                    'schedules': 'Gestão de Agendamentos', 
+                    'maintenance': 'Controle de Manutenção', 
+                    'partners': 'Banco de Dados de Sócios (JSON)',
+                    'users': 'Equipe Técnica' 
+                };
+                document.getElementById('pageTitle').textContent = titles[tabId] || 'Academia Pro';
+
+                // Close sidebar on mobile after selection
+                if (window.innerWidth < 1024) {
+                    this.toggleSidebar();
+                }
+            },
+
+            toggleSidebar() {
+                const sidebar = document.getElementById('sidebar');
+                const overlay = document.getElementById('sidebarOverlay');
+                if (sidebar) sidebar.classList.toggle('active');
+                if (overlay) overlay.classList.toggle('active');
+            },
+
+            switchMaintenanceSubTab(subTabId) {
+                document.querySelectorAll('.maintenance-sub-tab').forEach(t => t.classList.add('hidden'));
+                document.querySelectorAll('[id^="nav-m-"]').forEach(b => {
+                    b.classList.remove('bg-primary-600', 'text-white', 'shadow-lg', 'shadow-primary-600/20');
+                    b.classList.add('text-slate-500', 'hover:bg-slate-100', 'dark:hover:bg-slate-800');
+                });
+
+                const subTab = document.getElementById(subTabId);
+                const btn = document.getElementById(`nav-${subTabId}`);
+
+                if (subTab) subTab.classList.remove('hidden');
+                if (btn) {
+                    btn.classList.add('bg-primary-600', 'text-white', 'shadow-lg', 'shadow-primary-600/20');
+                    btn.classList.remove('text-slate-500', 'hover:bg-slate-100', 'dark:hover:bg-slate-800');
+                }
+
+                if (subTabId === 'm-dashboard') this.renderMaintenanceDashboard();
+                if (subTabId === 'm-equipments') this.renderEquipment();
+                if (subTabId === 'm-logs') this.renderMaintenanceLogs();
+                if (subTabId === 'm-pendencies') this.renderPendencies();
+            },
+
+            applyPermissions() {
+                const isCoord = state.currentUser.role === 'coordenador';
+                const isMaster = state.currentUser.role === 'master';
+                const hasAdminAccess = isCoord || isMaster;
+
+                const dash = document.getElementById('nav-dashboard');
+                const equip = document.getElementById('nav-equipment');
+                const partners = document.getElementById('nav-partners');
+                const users = document.getElementById('nav-users');
+                
+                if (dash) dash.style.display = hasAdminAccess ? 'flex' : 'none';
+                if (equip) equip.style.display = hasAdminAccess ? 'flex' : 'none';
+                if (partners) partners.style.display = hasAdminAccess ? 'flex' : 'none';
+                if (users) users.style.display = hasAdminAccess ? 'flex' : 'none';
+                
+                if (!hasAdminAccess) this.switchTab('schedules');
+            },
+
+            togglePasswordVisibility(inputId, btn) {
+                const input = document.getElementById(inputId);
+                const icon = btn.querySelector('i');
+                if (input.type === 'password') {
+                    input.type = 'text';
+                    icon.className = 'fas fa-eye-slash';
+                } else {
+                    input.type = 'password';
+                    icon.className = 'fas fa-eye';
+                }
+            },
+
+            openModal(id) { document.getElementById(id).classList.add('active'); },
+            closeModal(id) { document.getElementById(id).classList.remove('active'); },
+
+            renderSchedules() {
+                const container = document.getElementById('tableSchedules');
+                if (!container) return;
+                
+                const isMaster = state.currentUser.role === 'master';
+                const isCoord = state.currentUser.role === 'coordenador';
+                
+                const filtered = (isMaster || isCoord) 
+                    ? state.schedules 
+                    : state.schedules.filter(s => s.professor === state.currentUser.name);
+
+                container.innerHTML = filtered.map((s, index) => `
+                    <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-all duration-300 animate-scale-in group" style="animation-delay: ${index * 20}ms">
+                        <td class="px-6 py-4 font-bold border-l-4 border-transparent group-hover:border-primary-500 transition-all text-slate-900 dark:text-white">${s.socio}</td>
+                        <td class="px-6 py-4 text-sm text-slate-500 dark:text-slate-400 font-mono">${s.plano}</td>
+                        <td class="px-6 py-4 text-sm font-semibold text-slate-700 dark:text-slate-200">${s.professor}</td>
+                        <td class="px-6 py-4 text-sm font-medium text-slate-500 dark:text-slate-400">${s.createdBy || 'Sistema'}</td>
+                        <td class="px-6 py-4 text-sm">
+                            <div class="font-bold text-slate-900 dark:text-white">${new Date(s.data).toLocaleDateString('pt-BR')}</div>
+                            <div class="text-slate-400 dark:text-slate-500 text-xs">${s.hora}</div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-widest ${this.getStatusColor(s.status)} transition-all group-hover:scale-105 shadow-sm">${s.status}</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <button onclick="logic.deleteSchedule('${s.id}')" class="w-9 h-9 flex items-center justify-center rounded-xl bg-red-50 dark:bg-red-900/20 text-red-500 hover:bg-red-500 hover:text-white transition-all transform hover:-translate-y-1 shadow-sm">
+                                <i class="fas fa-trash-alt text-xs"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `).join('');
+            },
+
+            renderEquipment() {
+                const container = document.getElementById('equipGrid');
+                if (!container) return;
+                
+                const search = document.getElementById('searchEquip')?.value.toLowerCase() || '';
+                const statusFilter = document.getElementById('filterEquipStatus')?.value || '';
+                const catFilter = document.getElementById('filterEquipCat')?.value || '';
+
+                const filtered = state.equipment.filter(e => {
+                    const matchesSearch = e.nome.toLowerCase().includes(search) || e.id.toLowerCase().includes(search);
+                    const matchesStatus = !statusFilter || e.status === statusFilter;
+                    const matchesCat = !catFilter || e.categoria === catFilter;
+                    return matchesSearch && matchesStatus && matchesCat;
+                });
+
+                if (filtered.length === 0) {
+                    container.innerHTML = `<div class="col-span-full py-20 text-center"><i class="fas fa-search text-4xl text-slate-200 mb-4"></i><p class="text-slate-400">Nenhum equipamento encontrado.</p></div>`;
+                    return;
+                }
+
+                container.innerHTML = filtered.map((e, index) => {
+                    const isOverdue = !e.ultima || (new Date() - new Date(e.ultima)) > (7 * 24 * 60 * 60 * 1000);
+                    const s = e.status ? e.status.toLowerCase() : '';
+                    const statusClass = s === 'ativo' ? 'border-emerald-500' : s === 'em manutenção' ? 'border-orange-500' : 'border-red-500';
+                    const statusBg = s === 'ativo' ? 'bg-emerald-500' : s === 'em manutenção' ? 'bg-orange-500' : 'bg-red-500';
+                    
+                    return `
+                    <div class="card-premium p-0 group overflow-hidden border-t-4 ${statusClass} shadow-xl hover:shadow-2xl transition-all duration-500 animate-scale-in hover:-translate-y-2" style="animation-delay: ${index * 30}ms">
+                        <!-- Top Info Bar -->
+                        <div class="px-4 md:px-6 py-3 md:py-4 bg-slate-50/50 dark:bg-slate-800/30 flex justify-between items-center border-b border-slate-100 dark:border-slate-800/50">
+                            <span class="text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] bg-white dark:bg-slate-900 px-3 py-1 rounded-full shadow-sm border border-slate-100 dark:border-slate-800">${e.id}</span>
+                            <div class="flex items-center gap-2">
+                                <div class="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full ${statusBg} animate-pulse"></div>
+                                <span class="px-2 md:px-3 py-1 md:py-1.5 rounded-full text-[9px] md:text-[10px] font-extrabold uppercase tracking-widest ${this.getStatusColor(e.status)} shadow-sm transition-all duration-300 group-hover:scale-105">${e.status}</span>
+                            </div>
+                        </div>
+
+                        <div class="p-4 md:p-6 relative">
+                            <!-- Background Decor -->
+                            <div class="absolute -right-4 -bottom-4 text-slate-100 dark:text-slate-800/20 text-6xl md:text-8xl transform rotate-12 pointer-events-none group-hover:rotate-0 transition-transform duration-700 opacity-30 md:opacity-50 group-hover:opacity-100">
+                                <i class="fas ${this.getEquipIcon(e.categoria)}"></i>
+                            </div>
+
+                            <div class="flex items-start gap-3 md:gap-5 relative z-10">
+                                <!-- Icon Area -->
+                                <div class="w-12 h-12 md:w-16 md:h-16 shrink-0 bg-gradient-to-br from-primary-500/10 to-primary-600/20 text-primary-600 rounded-2xl flex items-center justify-center shadow-inner group-hover:scale-110 group-hover:rotate-3 transition-all duration-500">
+                                    <i class="fas ${this.getEquipIcon(e.categoria)} text-xl md:text-2xl"></i>
+                                </div>
+                                
+                                <!-- Main Info -->
+                                <div class="flex-1 min-w-0">
+                                    <h4 class="font-black text-lg md:text-xl tracking-tight text-slate-900 dark:text-white truncate group-hover:text-primary-600 transition-colors duration-300">${e.nome}</h4>
+                                    <p class="text-[9px] md:text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-1 md:mt-1.5 flex items-center gap-2">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-slate-700"></span>
+                                        ${e.brand || 'Marca não informada'}
+                                    </p>
+                                    <p class="text-[9px] md:text-[10px] font-bold text-primary-500 uppercase tracking-wider mt-1 flex items-center gap-2">
+                                        <i class="fas fa-map-marker-alt text-[8px]"></i> ${e.local}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <!-- Alert Bar (if overdue) -->
+                            ${isOverdue && e.status === 'Ativo' ? `
+                            <div class="mt-4 md:mt-6 p-2 md:p-3 bg-orange-500/10 border border-orange-500/20 rounded-xl flex items-center gap-2 md:gap-3 animate-bounce-subtle">
+                                <i class="fas fa-exclamation-triangle text-orange-500 text-xs md:text-base"></i>
+                                <span class="text-[8px] md:text-[10px] font-black text-orange-600 dark:text-orange-400 uppercase tracking-widest">Revisão Preventiva Pendente</span>
+                            </div>
+                            ` : ''}
+
+                            <!-- Action Bar -->
+                            <div class="mt-6 md:mt-8 pt-4 md:pt-6 border-t border-slate-100 dark:border-slate-800/50 flex justify-between items-center relative z-10">
+                                <div class="flex items-center gap-2 md:gap-3">
+                                    <div class="w-8 h-8 md:w-10 md:h-10 rounded-full ${isOverdue ? 'bg-orange-500/10 text-orange-500' : 'bg-emerald-500/10 text-emerald-500'} flex items-center justify-center shadow-inner group-hover:scale-110 transition-transform">
+                                        <i class="fas ${isOverdue ? 'fa-clock' : 'fa-calendar-check'} text-xs md:text-sm"></i>
+                                    </div>
+                                    <div>
+                                        <p class="text-[8px] md:text-[9px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest">Última Revisão</p>
+                                        <p class="font-black text-[10px] md:text-xs mt-0.5 text-slate-700 dark:text-slate-300">${e.ultima ? new Date(e.ultima).toLocaleDateString('pt-BR') : '---'}</p>
+                                    </div>
+                                </div>
+                                <div class="flex gap-2 lg:opacity-0 lg:translate-x-4 lg:group-hover:translate-x-0 lg:group-hover:opacity-100 transition-all duration-500">
+                                    <button onclick="logic.editEquipment('${e.id}')" class="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-primary-600 hover:text-white transition-all shadow-md transform hover:-translate-y-1">
+                                        <i class="fas fa-edit text-xs md:text-sm"></i>
+                                    </button>
+                                    <button onclick="logic.deleteEquipment('${e.id}')" class="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center rounded-xl bg-red-50 dark:bg-red-900/20 text-red-500 hover:bg-red-500 hover:text-white transition-all shadow-md transform hover:-translate-y-1">
+                                        <i class="fas fa-trash-alt text-xs md:text-sm"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `}).join('');
+                
+                // Atualizar select de equipamentos no modal de pendências
+                const penSelect = document.getElementById('penEquip');
+                if (penSelect) {
+                    penSelect.innerHTML = '<option value="">Selecione um equipamento...</option>' + 
+                        state.equipment.map(e => `<option value="${e.id}">${e.id} - ${e.nome}</option>`).join('');
+                }
+            },
+
+            renderMaintenanceDashboard() {
+                const lastPrevLog = state.maintenanceLogs.filter(l => l.tipo === 'Preventiva')[0] || null;
+                const lastPrevDate = lastPrevLog ? new Date(lastPrevLog.data) : null;
+                
+                // Cálculo da Próxima Quarta-feira (Ciclo Preventivo)
+                const today = new Date();
+                const nextWed = new Date();
+                nextWed.setDate(today.getDate() + (3 - today.getDay() + 7) % 7);
+                if (today.getDay() === 3 && lastPrevLog && new Date(lastPrevLog.data).toDateString() === today.toDateString()) {
+                    nextWed.setDate(nextWed.getDate() + 7);
+                }
+
+                // Elementos do Dashboard com Verificação de Segurança
+                const elLast = document.getElementById('m-stat-last');
+                const elLastResp = document.getElementById('m-stat-last-resp');
+                const elNext = document.getElementById('m-stat-next');
+                const elTotal = document.getElementById('m-stat-total');
+                const elProb = document.getElementById('m-stat-problems');
+                const badge = document.getElementById('m-status-badge');
+                const elOk = document.getElementById('m-count-ok');
+                const elPend = document.getElementById('m-count-pending');
+                const elRep = document.getElementById('m-count-repair');
+                const penContainer = document.getElementById('m-dashboard-pendencies');
+
+                if (elLast) elLast.textContent = lastPrevDate ? lastPrevDate.toLocaleDateString('pt-BR') : '--/--/----';
+                if (elLast) elLast.classList.add('text-slate-900', 'dark:text-white');
+                if (elLastResp) elLastResp.textContent = `Última Preventiva por: ${lastPrevLog ? lastPrevLog.responsavel : '---'}`;
+                if (elLastResp) elLastResp.classList.add('text-slate-500', 'dark:text-slate-400');
+                if (elNext) elNext.textContent = nextWed.toLocaleDateString('pt-BR');
+                if (elNext) elNext.classList.add('text-slate-900', 'dark:text-white');
+                if (elTotal) elTotal.textContent = state.equipment.length;
+                if (elTotal) elTotal.classList.add('text-slate-900', 'dark:text-white');
+                if (elProb) elProb.textContent = state.pendencies.filter(p => p.status === 'Pendente').length;
+
+                // Status do Ciclo Preventivo Semanal (Proativo)
+                if (badge) {
+                    const isPrevDoneThisWeek = lastPrevLog && this.isSameWeek(new Date(lastPrevLog.data), today);
+                    const dayOfWeek = today.getDay(); 
+
+                    if (isPrevDoneThisWeek) {
+                        badge.textContent = 'Ciclo em Dia';
+                        badge.className = 'mt-2 inline-block px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest bg-emerald-100 text-emerald-600';
+                    } else if (dayOfWeek > 3) {
+                        badge.textContent = 'Preventiva Atrasada';
+                        badge.className = 'mt-2 inline-block px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest bg-red-100 text-red-600';
+                    } else {
+                        badge.textContent = 'Preventiva Pendente';
+                        badge.className = 'mt-2 inline-block px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest bg-orange-100 text-orange-600';
+                    }
+                }
+
+                // Contadores de Status Operacional
+                if (elOk) elOk.textContent = state.equipment.filter(e => e.status === 'Ativo').length;
+                if (elPend) elPend.textContent = state.equipment.filter(e => e.status === 'Inativo').length;
+                if (elRep) elRep.textContent = state.equipment.filter(e => e.status === 'Em manutenção').length;
+
+                // Pendências Críticas (Reativo)
+                if (penContainer) {
+                    const activePens = state.pendencies.filter(p => p.status === 'Pendente').slice(0, 5);
+                    if (activePens.length > 0) {
+                        penContainer.innerHTML = activePens.map(p => `
+                            <div class="p-3 bg-red-50 dark:bg-red-900/10 border-l-4 border-red-500 rounded-lg flex justify-between items-center group hover:bg-red-100 transition-all">
+                                <div>
+                                    <p class="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-tighter">${p.equipId} - ${p.equipName}</p>
+                                    <p class="text-[10px] text-red-600 font-bold mt-1"><i class="fas fa-tools mr-1"></i> Falha Detectada</p>
+                                </div>
+                                <button onclick="ui.switchMaintenanceSubTab('m-pendencies')" class="p-2 text-red-500 hover:bg-red-500 hover:text-white rounded-lg transition-all">
+                                    <i class="fas fa-wrench text-[10px]"></i>
+                                </button>
+                            </div>
+                        `).join('');
+                    } else {
+                        penContainer.innerHTML = '<div class="text-center py-10"><i class="fas fa-check-circle text-emerald-500 text-3xl mb-3"></i><p class="text-slate-400 italic text-sm">Sem falhas críticas reportadas.</p></div>';
+                    }
+                }
+            },
+
+            renderMaintenanceLogs() {
+                const container = document.getElementById('tableMaintenanceLogs');
+                if (!container) return;
+                container.innerHTML = state.maintenanceLogs.map((l, index) => {
+                    const isPrev = l.tipo === 'Preventiva';
+                    const statusClass = isPrev ? 'border-emerald-500' : 'border-orange-500';
+                    
+                    return `
+                    <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-all duration-300 animate-scale-in group" style="animation-delay: ${index * 30}ms">
+                        <td class="px-6 py-4 font-bold border-l-4 ${statusClass} text-slate-900 dark:text-white">${new Date(l.data).toLocaleDateString('pt-BR')}</td>
+                        <td class="px-6 py-4">
+                            <span class="px-2 py-0.5 rounded-md text-[10px] font-black uppercase ${isPrev ? 'bg-emerald-100 text-emerald-600' : 'bg-orange-100 text-orange-600'} transition-all group-hover:scale-110">${l.tipo}</span>
+                        </td>
+                        <td class="px-6 py-4 font-medium text-slate-500 dark:text-slate-400">${l.responsavel}</td>
+                        <td class="px-6 py-4 text-xs font-bold text-primary-600">${l.equipCount} equipamentos</td>
+                        <td class="px-6 py-4 text-xs text-slate-400 dark:text-slate-500 italic">${l.obs || '---'}</td>
+                        <td class="px-6 py-4">
+                            <button onclick="logic.deleteMaintenanceLog('${l.id}')" class="w-9 h-9 flex items-center justify-center rounded-xl bg-red-50 dark:bg-red-900/20 text-red-500 hover:bg-red-500 hover:text-white transition-all shadow-sm transform hover:-translate-y-1">
+                                <i class="fas fa-trash-alt text-xs"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `}).join('');
+            },
+
+            renderPendencies() {
+                const container = document.getElementById('pendencyGrid');
+                if (!container) return;
+                container.innerHTML = state.pendencies.map((p, index) => {
+                    const isPending = p.status === 'Pendente';
+                    const statusClass = isPending ? 'border-red-500' : 'border-emerald-500';
+                    
+                    return `
+                    <div class="card-premium p-6 card-inner-glow border-t-4 ${statusClass} animate-scale-in" style="animation-delay: ${index * 50}ms">
+                        <div class="flex justify-between items-start mb-4">
+                            <div class="relative">
+                                <h4 class="font-extrabold text-lg tracking-tight ${isPending ? 'text-red-600' : 'text-emerald-600'}">${p.equipId}</h4>
+                                <p class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">${p.equipName}</p>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-widest ${isPending ? 'bg-red-500 text-white shadow-lg shadow-red-500/20' : 'bg-emerald-100 text-emerald-600'}">${isPending ? 'FALHA REATIVA' : 'RESOLVIDO'}</span>
+                                <button onclick="logic.deletePendency('${p.id}')" class="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 hover:bg-red-500 hover:text-white transition-all shadow-sm">
+                                    <i class="fas fa-trash-alt text-[10px]"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl mb-6">
+                            <p class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">Problema Reportado:</p>
+                            <p class="text-sm text-slate-700 dark:text-slate-200 leading-relaxed italic">"${p.descricao}"</p>
+                        </div>
+                        <div class="pt-4 border-t border-slate-100 dark:border-slate-800/50 flex justify-between items-center">
+                            <div class="flex flex-col">
+                                <span class="text-[9px] text-slate-400 dark:text-slate-500 font-bold uppercase">Reportado em:</span>
+                                <span class="text-[11px] font-bold text-slate-600 dark:text-slate-300">${new Date(p.createdAt).toLocaleDateString('pt-BR')}</span>
+                            </div>
+                            ${p.status === 'Pendente' ? `
+                                <button onclick="logic.resolvePendency('${p.id}')" class="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-red-600/20 flex items-center gap-2">
+                                    <i class="fas fa-tools"></i> Executar Corretiva
+                                </button>
+                            ` : `
+                                <div class="flex flex-col items-end">
+                                    <span class="text-[9px] text-emerald-500 font-bold uppercase">Corretiva realizada:</span>
+                                    <span class="text-[11px] font-bold text-emerald-600">${p.resolvedAt ? new Date(p.resolvedAt).toLocaleDateString('pt-BR') : '---'}</span>
+                                </div>
+                            `}
+                        </div>
+                    </div>
+                `}).join('');
+            },
+
+            isSameWeek(d1, d2) {
+                const oneDay = 24 * 60 * 60 * 1000;
+                const diff = Math.abs(d1 - d2);
+                return diff < 7 * oneDay && d1.getDay() <= d2.getDay();
+            },
+
+            renderUsers() {
+                const container = document.getElementById('userGrid');
+                if (!container) return;
+                container.innerHTML = state.users.map((u, index) => `
+                    <div class="card-premium p-6 card-inner-glow animate-scale-in group hover:-translate-y-2 transition-all duration-500" style="animation-delay: ${index * 50}ms">
+                        <div class="flex items-center gap-5 mb-6">
+                            <div class="relative">
+                                <div class="w-16 h-16 rounded-[1.5rem] bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center text-white text-2xl font-black shadow-lg shadow-primary-500/20 group-hover:rotate-6 transition-transform">
+                                    ${u.name.charAt(0)}
+                                </div>
+                                <div class="absolute -bottom-1 -right-1 w-6 h-6 bg-emerald-500 border-4 border-white dark:border-slate-900 rounded-full animate-pulse"></div>
+                            </div>
+                            <div>
+                                <h4 class="font-extrabold text-lg tracking-tight text-slate-900 dark:text-white group-hover:text-primary-600 transition-colors">${u.name}</h4>
+                                <div class="flex items-center gap-2 mt-1">
+                                    <span class="px-2 py-0.5 bg-primary-100 dark:bg-primary-900/30 text-primary-600 text-[9px] font-black rounded-md uppercase tracking-widest transition-all group-hover:scale-110">${u.role}</span>
+                                    <span class="text-[10px] text-slate-400 dark:text-slate-500 font-bold">• Ativo</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="space-y-3 bg-slate-50 dark:bg-slate-800/30 p-4 rounded-2xl border border-slate-100 dark:border-slate-800/50 group-hover:bg-white dark:group-hover:bg-slate-800 transition-colors">
+                            <div class="flex justify-between items-center text-xs">
+                                <span class="text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest">ID de Acesso</span>
+                                <span class="font-black font-mono text-primary-600">${u.user || u.username}</span>
+                            </div>
+                        </div>
+                        <div class="mt-6 pt-4 flex gap-3 opacity-0 group-hover:opacity-100 translate-y-4 group-hover:translate-y-0 transition-all duration-500">
+                            ${(state.currentUser.role === 'master' || (u.role !== 'master' && u.role !== 'coordenador')) || state.currentUser.id === u.id ? `
+                            <button onclick="logic.editUser('${u.id}')" class="flex-1 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-primary-500 hover:text-primary-500 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all shadow-md transform hover:-translate-y-1">
+                                <i class="fas fa-edit mr-2"></i> Editar
+                            </button>` : ''}
+                            ${u.role !== 'coordenador' && u.role !== 'master' ? `
+                            <button onclick="logic.deleteUser('${u.id}')" class="w-12 h-12 flex items-center justify-center bg-red-50 dark:bg-red-900/20 text-red-500 hover:bg-red-500 hover:text-white rounded-xl transition-all shadow-md transform hover:-translate-y-1">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>` : ''}
+                        </div>
+                    </div>
+                `).join('');
+            },
+
+            renderPartners() {
+                const container = document.getElementById('tablePartners');
+                const btnContainer = document.getElementById('btnSeeMorePartners');
+                if (!container) return;
+
+                const limit = 10;
+                const hasMore = state.partners.length > limit;
+                const partnersToRender = state.showAllPartners ? state.partners : state.partners.slice(0, limit);
+
+                if (btnContainer) {
+                    if (hasMore) {
+                        btnContainer.classList.remove('hidden');
+                        const text = document.getElementById('btnSeeMorePartnersText');
+                        const icon = document.getElementById('btnSeeMorePartnersIcon');
+                        if (text) text.textContent = state.showAllPartners ? 'Ver Menos' : 'Ver Mais';
+                        if (icon) icon.className = state.showAllPartners ? 'fas fa-chevron-up' : 'fas fa-chevron-down';
+                    } else {
+                        btnContainer.classList.add('hidden');
+                    }
+                }
+
+                container.innerHTML = partnersToRender.map((p, index) => `
+                    <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-all duration-300 animate-scale-in group" style="animation-delay: ${index * 20}ms">
+                        <td class="px-6 py-4 font-black text-primary-600 font-mono border-l-4 border-transparent group-hover:border-primary-500 transition-all">${p.title}</td>
+                        <td class="px-6 py-4">
+                            <div class="font-extrabold text-slate-900 dark:text-white group-hover:text-primary-600 transition-colors">${p.name}</div>
+                            <div class="text-[10px] text-slate-400 dark:text-slate-500 font-bold mt-1 uppercase tracking-wider">
+                                ${p.dependents && p.dependents.length ? `<i class="fas fa-users mr-1"></i> ${p.dependents.join(', ')}` : '<i class="fas fa-user mr-1"></i> Sem dependentes'}
+                            </div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="flex gap-2 opacity-0 group-hover:opacity-100 translate-x-4 group-hover:translate-x-0 transition-all duration-500">
+                                <button onclick="logic.editPartner('${p.id}')" class="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-primary-600 hover:text-white transition-all shadow-md transform hover:-translate-y-1">
+                                    <i class="fas fa-edit text-xs"></i>
+                                </button>
+                                <button onclick="logic.deletePartner('${p.id}')" class="w-9 h-9 flex items-center justify-center rounded-xl bg-red-50 dark:bg-red-900/20 text-red-500 hover:bg-red-500 hover:text-white transition-all shadow-md transform hover:-translate-y-1">
+                                    <i class="fas fa-trash-alt text-xs"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `).join('');
+            },
+
+            togglePartnersVisibility() {
+                state.showAllPartners = !state.showAllPartners;
+                this.renderPartners();
+            },
+
+            getStatusColor(status) {
+                const s = status ? status.toLowerCase() : '';
+                if (s === 'presente' || s === 'em dia' || s === 'ativo') return 'bg-emerald-100 text-emerald-600';
+                if (s === 'agendado') return 'bg-primary-100 text-primary-600';
+                if (s === 'faltou' || s === 'vencida' || s === 'inativo') return 'bg-red-100 text-red-600';
+                if (s === 'em manutenção' || s === 'pendente') return 'bg-orange-100 text-orange-600';
+                return 'bg-slate-100 text-slate-600';
+            },
+
+            getEquipIcon(cat) {
+                return cat === 'Cardio' ? 'fa-running' : cat === 'Musculação' ? 'fa-dumbbell' : 'fa-box';
+            },
+
+            updateDashboard() {
+                const statSch = document.getElementById('stat-schedules');
+                const statOcc = document.getElementById('stat-occupancy');
+                const statStu = document.getElementById('stat-students');
+                const statAlt = document.getElementById('stat-alerts');
+                
+                if (statSch) statSch.textContent = state.schedules.length;
+                if (statOcc) statOcc.textContent = Math.min(Math.round((state.schedules.length / 150) * 100), 100) + '%';
+                if (statStu) statStu.textContent = new Set(state.schedules.map(s => s.socio)).size;
+                if (statAlt) statAlt.textContent = state.equipment.filter(e => e.status !== 'Em dia').length;
+                
+                const profs = {};
+                state.schedules.forEach(s => profs[s.professor] = (profs[s.professor] || 0) + 1);
+                const sorted = Object.entries(profs).sort((a,b) => b[1]-a[1]).slice(0, 4);
+                
+                const ranking = document.getElementById('profRanking');
+                if (ranking) {
+                    if (sorted.length) {
+                        ranking.innerHTML = sorted.map(([name, count]) => `
+                            <div class="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl">
+                                <span class="font-bold text-sm">${name}</span>
+                                <span class="px-3 py-1 bg-primary-600 text-white rounded-lg text-xs font-bold">${count} aulas</span>
+                            </div>
+                        `).join('');
+                    } else {
+                        ranking.innerHTML = '<p class="text-slate-400 italic text-center py-10 text-sm">Sem dados suficientes...</p>';
+                    }
+                }
+                this.updateCharts();
+            },
+
+            updateCharts() {
+                const ctxEl = document.getElementById('chartFlow');
+                if (!ctxEl) return;
+                const ctx = ctxEl.getContext('2d');
+                if (state.charts.flow) state.charts.flow.destroy();
+                
+                state.charts.flow = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'],
+                        datasets: [{
+                            label: 'Frequência',
+                            data: [12, 19, 15, 25, 22, 10],
+                            borderColor: '#3b82f6',
+                            tension: 0.4,
+                            fill: true,
+                            backgroundColor: 'rgba(59, 130, 246, 0.1)'
+                        }]
+                    },
+                    options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true }, x: { grid: { display: false } } }, responsive: true, maintainAspectRatio: false }
+                });
+            }
+        };
+
+        // --- LOGIC MODULE ---
+        window.logic = {
+            initRealtimeListeners() {
+                console.log("Iniciando ouvintes em tempo real...");
+                
+                // Agendamentos
+                db.collection('schedules').orderBy('data', 'desc').onSnapshot(snap => {
+                    state.schedules = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    ui.renderSchedules();
+                    ui.updateDashboard();
+                }, err => console.error("Erro no ouvinte de agendamentos:", err));
+
+                // Equipamentos
+                db.collection('equipment').orderBy('id', 'asc').onSnapshot(snap => {
+                    state.equipment = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    ui.renderEquipment();
+                    ui.renderMaintenanceDashboard();
+                    ui.updateDashboard();
+                }, err => console.error("Erro no ouvinte de equipamentos:", err));
+
+                // Logs de Manutenção
+                db.collection('maintenanceLogs').orderBy('data', 'desc').onSnapshot(snap => {
+                    state.maintenanceLogs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    ui.renderMaintenanceLogs();
+                    ui.renderMaintenanceDashboard();
+                }, err => console.error("Erro no ouvinte de manutenção:", err));
+
+                // Pendências
+                db.collection('pendencies').orderBy('createdAt', 'desc').onSnapshot(snap => {
+                    state.pendencies = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    ui.renderPendencies();
+                    ui.renderMaintenanceDashboard();
+                }, err => console.error("Erro no ouvinte de pendências:", err));
+
+                // Sócios
+                db.collection('partners').onSnapshot(snap => {
+                    state.partners = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    ui.renderPartners();
+                }, err => console.error("Erro no ouvinte de sócios:", err));
+
+                // Usuários (Equipe)
+                db.collection('users').onSnapshot(snap => {
+                    state.users = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    ui.renderUsers();
+                }, err => console.error("Erro no ouvinte de usuários:", err));
+            },
+
+            async syncAll() {
+                // Ativa os ouvintes em tempo real (apenas uma vez)
+                if (!window.realtimeInitialized) {
+                    this.initRealtimeListeners();
+                    window.realtimeInitialized = true;
+                }
+            },
+
+            async searchPartner(title) {
+                try {
+                    const results = document.getElementById('partnerResults');
+                    const list = document.getElementById('partnerList');
+                    if (!results || !list) return;
+                    if (title.length < 2) { results.classList.add('hidden'); return; }
+
+                    const snap = await db.collection('partners').where('title', '==', title).get();
+                    if (snap.empty) {
+                        list.innerHTML = '<p class="p-4 text-xs text-red-500 font-bold uppercase text-center">Título não encontrado</p>';
+                    } else {
+                        const data = snap.docs[0].data();
+                        const all = [data.name, ...(data.dependents || [])];
+                        list.innerHTML = all.map(name => `
+                            <div onclick="logic.selectPartner(this, '${name}')" class="p-4 cursor-pointer hover:bg-primary-50 dark:hover:bg-primary-900/20 border-b border-slate-100 dark:border-slate-800 last:border-0 flex items-center gap-3 transition-all">
+                                <i class="fas fa-user text-slate-300"></i>
+                                <span class="font-bold text-sm">${name}</span>
+                            </div>
+                        `).join('');
+                    }
+                    results.classList.remove('hidden');
+                } catch (error) {
+                    console.error("Erro ao buscar sócio:", error);
+                    const list = document.getElementById('partnerList');
+                    if (list) list.innerHTML = '<p class="p-4 text-xs text-orange-500 font-bold uppercase text-center">Erro na busca (Verifique Firebase)</p>';
+                    document.getElementById('partnerResults').classList.remove('hidden');
+                }
+            },
+
+            selectPartner(el, name) {
+                document.querySelectorAll('#partnerList div').forEach(d => d.classList.remove('bg-primary-600', 'text-white'));
+                el.classList.add('bg-primary-600', 'text-white');
+                const hiddenInput = document.getElementById('selectedPartnerName');
+                if (hiddenInput) hiddenInput.value = name;
+            },
+
+            async handleScheduleSubmit(e) {
+                e.preventDefault();
+                const btn = e.target.querySelector('button[type="submit"]');
+                const originalText = btn.textContent;
+                
+                try {
+                    btn.disabled = true;
+                    btn.textContent = "Salvando...";
+                    
+                    const name = document.getElementById('selectedPartnerName').value;
+                    if (!name) return alert('Selecione um beneficiário!');
+
+                    const data = {
+                        socio: name,
+                        plano: document.getElementById('scheduleTitle').value,
+                        professor: document.getElementById('scheduleProfessor').value,
+                        data: e.target.elements[3].value,
+                        hora: e.target.elements[4].value,
+                        status: 'Agendado',
+                        createdBy: state.currentUser.name,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    };
+
+                    await db.collection('schedules').add(data);
+                    ui.closeModal('modalSchedule');
+                    e.target.reset();
+                    await logic.syncAll();
+                } catch (error) {
+                    console.error("Erro ao salvar agendamento:", error);
+                    alert("Erro ao salvar no Firebase. Verifique sua configuração.");
+                } finally {
+                    btn.disabled = false;
+                    btn.textContent = originalText;
+                }
+            },
+
+            async handleEquipmentSubmit(e) {
+                e.preventDefault();
+                const btn = e.target.querySelector('button[type="submit"]');
+                const originalText = btn.textContent;
+                
+                try {
+                    btn.disabled = true;
+                    btn.textContent = "Salvando...";
+                    
+                    const data = {
+                        id: document.getElementById('eqId').value,
+                        categoria: document.getElementById('eqCat').value,
+                        nome: document.getElementById('eqName').value,
+                        local: document.getElementById('eqLocal').value,
+                        brand: document.getElementById('eqBrand').value,
+                        status: document.getElementById('eqStatus').value,
+                        ultima: new Date().toISOString().split('T')[0]
+                    };
+                    await db.collection('equipment').doc(data.id).set(data);
+                    ui.closeModal('modalEquipment');
+                    await logic.syncAll();
+                } catch (error) {
+                    console.error("Erro ao salvar equipamento:", error);
+                    alert("Erro ao salvar no Firebase.");
+                } finally {
+                    btn.disabled = false;
+                    btn.textContent = originalText;
+                }
+            },
+
+            editEquipment(id) {
+                const e = state.equipment.find(eq => eq.id === id);
+                if (!e) return;
+                
+                document.getElementById('equipmentModalTitle').textContent = 'Editar Equipamento';
+                document.getElementById('eqId').value = e.id;
+                document.getElementById('eqId').disabled = true;
+                document.getElementById('eqCat').value = e.categoria;
+                document.getElementById('eqName').value = e.nome;
+                document.getElementById('eqLocal').value = e.local;
+                document.getElementById('eqBrand').value = e.brand || '';
+                document.getElementById('eqStatus').value = e.status;
+                
+                ui.openModal('modalEquipment');
+            },
+
+            prepareEquipmentModal() {
+                document.getElementById('equipmentModalTitle').textContent = 'Novo Equipamento';
+                document.getElementById('eqId').value = '';
+                document.getElementById('eqId').disabled = false;
+                document.getElementById('eqCat').value = 'Musculação';
+                document.getElementById('eqName').value = '';
+                document.getElementById('eqLocal').value = '';
+                document.getElementById('eqBrand').value = '';
+                document.getElementById('eqStatus').value = 'Ativo';
+                ui.openModal('modalEquipment');
+            },
+
+            async importInitialEquipment() {
+                const initialList = [
+                    { id: "PIS-ABD-01", nome: "ABDUTORA MÁQUINA", local: "PISO ENTRADA", brand: "LIFE FITNESS", categoria: "Musculação" },
+                    { id: "PIS-ABD-02", nome: "ABDOMINAL MÁQUINA", local: "PISO ENTRADA", brand: "LIFE FITNESS", categoria: "Musculação" },
+                    { id: "PIS-ADU-01", nome: "ADUTORA MÁQUINA", local: "PISO ENTRADA", brand: "LIFE FITNESS", categoria: "Musculação" },
+                    { id: "PIS-BAN-01", nome: "BANCO LIVRE 90°", local: "PISO AUGUSTA", brand: "HAMMER", categoria: "Musculação" },
+                    { id: "PIS-BAN-02", nome: "BANCO LIVRE RETO", local: "PISO AUGUSTA", brand: "HAMMER", categoria: "Musculação" },
+                    { id: "PIS-BAN-03", nome: "BANCO LIVRE ARTICULADO 01", local: "PISO AUGUSTA", brand: "HAMMER", categoria: "Musculação" },
+                    { id: "PIS-BAN-04", nome: "BANCO LIVRE ARTICULADO 02", local: "PISO AUGUSTA", brand: "HAMMER", categoria: "Musculação" },
+                    { id: "PIS-BAN-05", nome: "BANCO LIVRE ARTICULADO", local: "PISO ENTRADA", brand: "HAMMER", categoria: "Musculação" },
+                    { id: "PIS-BAN-06", nome: "BANCO LIVRE RETO 01", local: "PISO ENTRADA", brand: "HAMMER", categoria: "Musculação" },
+                    { id: "PIS-BAN-07", nome: "BANCO LIVRE RETO 02", local: "PISO ENTRADA", brand: "HAMMER", categoria: "Musculação" },
+                    { id: "PIS-BEK-01", nome: "BEKI VERTICAL 02", local: "PISO CÁRDIO", brand: "LIFE FITNESS", categoria: "Cardio" },
+                    { id: "PIS-BIK-01", nome: "BIKE SPINNING", local: "PISO AUGUSTA", brand: "SCHWINN", categoria: "Bike" },
+                    { id: "PIS-BIK-02", nome: "BIKE SPINNING", local: "PISO AUGUSTA", brand: "SCHWINN", categoria: "Bike" },
+                    { id: "PIS-BIK-03", nome: "BIKE SPINNING", local: "PISO AUGUSTA", brand: "SCHWINN", categoria: "Bike" },
+                    { id: "PIS-BIK-04", nome: "BIKE SPINNING", local: "PISO AUGUSTA", brand: "SCHWINN", categoria: "Bike" },
+                    { id: "PIS-BIK-05", nome: "BIKE SPINNING", local: "PISO AUGUSTA", brand: "SCHWINN", categoria: "Bike" },
+                    { id: "PIS-BIK-06", nome: "BIKE SPINNING", local: "PISO AUGUSTA", brand: "SCHWINN", categoria: "Bike" },
+                    { id: "PIS-BIK-07", nome: "BIKE SPINNING", local: "PISO AUGUSTA", brand: "SCHWINN", categoria: "Bike" },
+                    { id: "PIS-BIK-08", nome: "BIKE SPINNING", local: "PISO AUGUSTA", brand: "SCHWINN", categoria: "Bike" },
+                    { id: "PIS-BIK-09", nome: "BIKE SPINNING", local: "PISO AUGUSTA", brand: "SCHWINN", categoria: "Bike" },
+                    { id: "PIS-BIK-10", nome: "BIKE SPINNING", local: "PISO AUGUSTA", brand: "SCHWINN", categoria: "Bike" },
+                    { id: "PIS-BIK-11", nome: "BIKE SPINNING", local: "PISO AUGUSTA", brand: "SCHWINN", categoria: "Bike" },
+                    { id: "PIS-BIK-12", nome: "BIKE SPINNING", local: "PISO AUGUSTA", brand: "SCHWINN", categoria: "Bike" },
+                    { id: "PIS-BIK-13", nome: "BIKE SPINNING", local: "PISO AUGUSTA", brand: "SCHWINN", categoria: "Bike" },
+                    { id: "PIS-BIK-14", nome: "BIKE SPINNING", local: "PISO AUGUSTA", brand: "SCHWINN", categoria: "Bike" },
+                    { id: "PIS-BIK-15", nome: "BIKE SPINNING", local: "PISO AUGUSTA", brand: "SCHWINN", categoria: "Bike" },
+                    { id: "PIS-BIK-16", nome: "BIKE SPINNING", local: "PISO AUGUSTA", brand: "SCHWINN", categoria: "Bike" },
+                    { id: "PIS-BIK-H01", nome: "BIKE HORIZONTAL", local: "PISO CÁRDIO", brand: "LIFE FITNESS", categoria: "Cardio" },
+                    { id: "PIS-BIK-H02", nome: "BIKE HORIZONTAL", local: "PISO CÁRDIO", brand: "LIFE FITNESS", categoria: "Cardio" },
+                    { id: "PIS-BIK-V01", nome: "BIKE VERTICAL 01", local: "PISO CÁRDIO", brand: "LIFE FITNESS", categoria: "Cardio" },
+                    { id: "PIS-CAD-01", nome: "CADEIRA FLEXORA", local: "PISO ENTRADA", brand: "LIFE FITNESS", categoria: "Musculação" },
+                    { id: "PIS-CAD-02", nome: "CADEIRA EXTENSORA", local: "PISO ENTRADA", brand: "LIFE FITNESS", categoria: "Musculação" },
+                    { id: "PIS-CRO-01", nome: "CROSS OVER", local: "PISO ENTRADA", brand: "LIFE FITNESS", categoria: "Musculação" },
+                    { id: "PIS-CRU-01", nome: "CRUCIFIXO MÁQUINA", local: "PISO ENTRADA", brand: "LIFE FITNESS", categoria: "Musculação" },
+                    { id: "PIS-DES-01", nome: "DESENVOLVIMENTO MÁQUINA", local: "PISO ENTRADA", brand: "HAMMER", categoria: "Musculação" },
+                    { id: "PIS-ELE-01", nome: "ELEVAÇÃO PÉLVICA MÁQUINA", local: "PISO AUGUSTA", brand: "SUPREME", categoria: "Musculação" },
+                    { id: "PIS-EST-01", nome: "ESTEIRA", local: "PISO CÁRDIO", brand: "LIFE FITNESS", categoria: "Esteira" },
+                    { id: "PIS-EST-02", nome: "ESTEIRA", local: "PISO CÁRDIO", brand: "LIFE FITNESS", categoria: "Esteira" },
+                    { id: "PIS-EST-03", nome: "ESTEIRA", local: "PISO CÁRDIO", brand: "LIFE FITNESS", categoria: "Esteira" },
+                    { id: "PIS-EST-04", nome: "ESTEIRA", local: "PISO CÁRDIO", brand: "LIFE FITNESS", categoria: "Esteira" },
+                    { id: "PIS-EST-05", nome: "ESTEIRA", local: "PISO CÁRDIO", brand: "LIFE FITNESS", categoria: "Esteira" },
+                    { id: "PIS-EST-06", nome: "ESTEIRA", local: "PISO CÁRDIO", brand: "LIFE FITNESS", categoria: "Esteira" },
+                    { id: "PIS-EST-07", nome: "ESTEIRA", local: "PISO CÁRDIO", brand: "LIFE FITNESS", categoria: "Esteira" },
+                    { id: "PIS-EST-08", nome: "ESTEIRA", local: "PISO CÁRDIO", brand: "LIFE FITNESS", categoria: "Esteira" },
+                    { id: "PIS-GLÚ-01", nome: "GLÚTEO MÁQUINA", local: "PISO ENTRADA", brand: "LIFE FITNESS", categoria: "Musculação" },
+                    { id: "PIS-GRA-01", nome: "GRAVITON", local: "PISO ENTRADA", brand: "LIFE FITNESS", categoria: "Musculação" },
+                    { id: "PIS-HAC-01", nome: "HACK DE AGACHAMENTO LIVRE", local: "PISO AUGUSTA", brand: "HAMMER", categoria: "Musculação" },
+                    { id: "PIS-LEG-01", nome: "LEG PRESS 45", local: "PISO AUGUSTA", brand: "HAMMER", categoria: "Musculação" },
+                    { id: "PIS-LEG-02", nome: "LEG PRESS 180°", local: "PISO ENTRADA", brand: "LIFE FITNESS", categoria: "Musculação" },
+                    { id: "PIS-MES-01", nome: "MESA FLEXORA", local: "PISO ENTRADA", brand: "HAMMER", categoria: "Musculação" },
+                    { id: "PIS-MUL-01", nome: "MULTI FORÇA", local: "PISO AUGUSTA", brand: "LIFE FITNESS", categoria: "Musculação" },
+                    { id: "PIS-PAN-01", nome: "PANTURRILHA MÁQUINA", local: "PISO AUGUSTA", brand: "HAMMER", categoria: "Musculação" },
+                    { id: "PIS-PAR-01", nome: "PARALELA", local: "PISO AUGUSTA", brand: "HAMMER", categoria: "Musculação" },
+                    { id: "PIS-PRA-01", nome: "PRANCHA EXTENSÃO DE TRONCO", local: "PISO AUGUSTA", brand: "HAMMER", categoria: "Musculação" },
+                    { id: "PIS-PUL-01", nome: "PULLEY MÁQUINA", local: "PISO ENTRADA", brand: "LIFE FITNESS", categoria: "Musculação" },
+                    { id: "PIS-REM-01", nome: "REMADA ARTICULADA MÁQUINA", local: "PISO AUGUSTA", brand: "HAMMER", categoria: "Musculação" },
+                    { id: "PIS-REM-02", nome: "REMO 01", local: "PISO CÁRDIO", brand: "STARKE", categoria: "Cardio" },
+                    { id: "PIS-REM-03", nome: "REMO 02", local: "PISO CÁRDIO", brand: "STARKE", categoria: "Cardio" },
+                    { id: "PIS-REM-04", nome: "REMADA MÁQUINA", local: "PISO ENTRADA", brand: "HAMMER", categoria: "Musculação" },
+                    { id: "PIS-ROS-01", nome: "ROSCA SCOTT", local: "PISO AUGUSTA", brand: "SPEEDO", categoria: "Musculação" },
+                    { id: "PIS-ROS-02", nome: "ROSCA MAQUINA", local: "PISO ENTRADA", brand: "LIFE FITNESS", categoria: "Musculação" },
+                    { id: "PIS-SUP-01", nome: "SUPINO DECLINADO", local: "PISO AUGUSTA", brand: "HAMMER", categoria: "Musculação" },
+                    { id: "PIS-SUP-02", nome: "SUPINO ARTICULADO", local: "PISO AUGUSTA", brand: "HAMMER", categoria: "Musculação" },
+                    { id: "PIS-SUP-03", nome: "SUPINO ARTICULADO", local: "PISO AUGUSTA", brand: "HAMMER", categoria: "Musculação" },
+                    { id: "PIS-SUP-04", nome: "SUPINO MÁQUINA", local: "PISO ENTRADA", brand: "LIFE FITNESS", categoria: "Musculação" },
+                    { id: "PIS-TRA-01", nome: "TRANSPORT 02", local: "PISO CÁRDIO", brand: "MOVIMENT", categoria: "Cardio" },
+                    { id: "PIS-TRA-02", nome: "TRANPORT 02", local: "PISO CÁRDIO", brand: "LIFE FITNESS", categoria: "Cardio" },
+                    { id: "PIS-TRA-03", nome: "TRANSPORT 01", local: "PISO CÁRDIO", brand: "MOVIMENT", categoria: "Cardio" },
+                    { id: "PIS-TRA-04", nome: "TRANSPORT 01", local: "PISO CÁRDIO", brand: "LIFE FITNESS", categoria: "Cardio" }
+                ];
+
+                if (confirm(`Deseja importar ${initialList.length} equipamentos da base oficial? Registros com IDs existentes serão atualizados.`)) {
+                    const batch = db.batch();
+                    initialList.forEach(e => {
+                        const ref = db.collection('equipment').doc(e.id);
+                        batch.set(ref, {
+                            ...e,
+                            status: "Ativo",
+                            ultima: new Date().toISOString().split('T')[0]
+                        });
+                    });
+                    await batch.commit();
+                    alert("Base oficial importada com sucesso!");
+                    await logic.syncAll();
+                }
+            },
+
+            async handlePendencySubmit(e) {
+                e.preventDefault();
+                const equipId = document.getElementById('penEquip').value;
+                const equip = state.equipment.find(eq => eq.id === equipId);
+                
+                if (!equip) return alert('Selecione um equipamento!');
+
+                try {
+                    const data = {
+                        equipId: equipId,
+                        equipName: equip.nome,
+                        descricao: document.getElementById('penDesc').value,
+                        status: 'Pendente',
+                        createdAt: new Date().toISOString()
+                    };
+
+                    await db.collection('pendencies').add(data);
+                    
+                    // Atualizar status do equipamento para 'Em manutenção' se houver problema
+                    await db.collection('equipment').doc(equipId).update({ status: 'Em manutenção' });
+
+                    ui.closeModal('modalPendency');
+                    e.target.reset();
+                    await logic.syncAll();
+                } catch (error) {
+                    console.error("Erro ao registrar pendência:", error);
+                    alert("Erro ao salvar no Firebase.");
+                }
+            },
+
+            async resolvePendency(id) {
+                if (!confirm('Deseja marcar esta pendência como resolvida?')) return;
+                
+                try {
+                    const pen = state.pendencies.find(p => p.id === id);
+                    const today = new Date().toISOString().split('T')[0];
+                    const batch = db.batch();
+
+                    // 1. Resolver pendência
+                    batch.update(db.collection('pendencies').doc(id), { 
+                        status: 'Resolvida', 
+                        resolvedAt: today 
+                    });
+                    
+                    // 2. Criar log de manutenção corretiva
+                    const logRef = db.collection('maintenanceLogs').doc();
+                    batch.set(logRef, {
+                        data: today,
+                        tipo: 'Corretiva',
+                        responsavel: state.currentUser.name,
+                        equipCount: 1,
+                        obs: `Resolução de pendência: ${pen.descricao} (Equip: ${pen.equipId})`
+                    });
+
+                    // 3. Atualizar equipamento
+                    const otherPens = state.pendencies.filter(p => p.equipId === pen.equipId && p.id !== id && p.status === 'Pendente');
+                    if (otherPens.length === 0) {
+                        batch.update(db.collection('equipment').doc(pen.equipId), { 
+                            status: 'Ativo', 
+                            ultima: today 
+                        });
+                    } else {
+                        batch.update(db.collection('equipment').doc(pen.equipId), { 
+                            ultima: today 
+                        });
+                    }
+
+                    await batch.commit();
+                    alert('Pendência resolvida e manutenção corretiva registrada!');
+                    await logic.syncAll();
+                } catch (error) {
+                    console.error("Erro ao resolver pendência:", error);
+                }
+            },
+
+            prepareManualMaintenanceModal() {
+                const list = document.getElementById('mEquipList');
+                if (!list) return;
+                
+                document.getElementById('mDate').value = new Date().toISOString().split('T')[0];
+                document.getElementById('mObs').value = '';
+                
+                list.innerHTML = state.equipment.map(e => `
+                    <label class="flex items-center gap-3 p-2 hover:bg-white dark:hover:bg-slate-800 rounded-lg cursor-pointer transition-all">
+                        <input type="checkbox" name="mEquips" value="${e.id}" class="w-4 h-4 rounded text-primary-600 focus:ring-primary-500">
+                        <div class="flex-1">
+                            <p class="text-xs font-bold">${e.id} - ${e.nome}</p>
+                            <p class="text-[10px] text-slate-400 uppercase tracking-widest">${e.categoria}</p>
+                        </div>
+                    </label>
+                `).join('');
+                
+                ui.openModal('modalManualMaintenance');
+            },
+
+            async handleManualMaintenanceSubmit(e) {
+                e.preventDefault();
+                const selected = Array.from(document.querySelectorAll('input[name="mEquips"]:checked')).map(cb => cb.value);
+                
+                if (selected.length === 0) return alert('Selecione ao menos um equipamento!');
+
+                const btn = e.target.querySelector('button[type="submit"]');
+                const originalText = btn.textContent;
+                
+                try {
+                    btn.disabled = true;
+                    btn.textContent = "Salvando...";
+                    
+                    const today = document.getElementById('mDate').value;
+                    const batch = db.batch();
+
+                    // 1. Registrar o Log
+                    const logRef = db.collection('maintenanceLogs').doc();
+                    batch.set(logRef, {
+                        data: today,
+                        tipo: document.getElementById('mType').value,
+                        responsavel: state.currentUser.name,
+                        equipCount: selected.length,
+                        obs: document.getElementById('mObs').value
+                    });
+
+                    // 2. Atualizar equipamentos selecionados
+                    selected.forEach(id => {
+                        const ref = db.collection('equipment').doc(id);
+                        batch.update(ref, { 
+                            ultima: today,
+                            status: 'Ativo' // Se foi feita manutenção, assume que está ativo
+                        });
+                    });
+
+                    await batch.commit();
+                    ui.closeModal('modalManualMaintenance');
+                    alert('Manutenção registrada com sucesso!');
+                    await logic.syncAll();
+                } catch (error) {
+                    console.error("Erro ao salvar manutenção manual:", error);
+                    alert("Erro ao salvar no Firebase.");
+                } finally {
+                    btn.disabled = false;
+                    btn.textContent = originalText;
+                }
+            },
+
+            async handleWeeklyMaintenance() {
+                if (!confirm('Deseja registrar a MANUTENÇÃO PREVENTIVA semanal? Esta é uma ação proativa para evitar falhas em todos os equipamentos ativos.')) return;
+
+                try {
+                    const today = new Date().toISOString().split('T')[0];
+                    const batch = db.batch();
+
+                    // 1. Registrar o Log de Manutenção Preventiva (Planejada)
+                    const logRef = db.collection('maintenanceLogs').doc();
+                    batch.set(logRef, {
+                        data: today,
+                        tipo: 'Preventiva',
+                        responsavel: state.currentUser.name,
+                        equipCount: state.equipment.filter(e => e.status === 'Ativo').length,
+                        obs: 'Ciclo de manutenção preventiva semanal realizado (Proativo).'
+                    });
+
+                    // 2. Atualizar data de revisão dos equipamentos ativos
+                    state.equipment.forEach(e => {
+                        if (e.status === 'Ativo') {
+                            const ref = db.collection('equipment').doc(e.id);
+                            batch.update(ref, { ultima: today });
+                        }
+                    });
+
+                    await batch.commit();
+                    alert('Manutenção Preventiva registrada com sucesso!');
+                    await logic.syncAll();
+                } catch (error) {
+                    console.error("Erro na manutenção preventiva:", error);
+                    alert("Erro ao processar manutenção.");
+                }
+            },
+
+            exportMaintenanceReport() {
+                const logs = state.maintenanceLogs.map(l => ({
+                    Data: new Date(l.data).toLocaleDateString('pt-BR'),
+                    Tipo: l.tipo,
+                    Responsavel: l.responsavel,
+                    Equipamentos: l.equipCount,
+                    Observacoes: l.obs
+                }));
+
+                const json = JSON.stringify(logs, null, 2);
+                const blob = new Blob([json], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `relatorio_manutencao_${new Date().toISOString().split('T')[0]}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+                
+                alert("Relatório gerado com sucesso! O download foi iniciado.");
+            },
+
+            async handleUserSubmit(e) {
+                e.preventDefault();
+                const btn = e.target.querySelector('button[type="submit"]');
+                const originalText = btn.textContent;
+                
+                try {
+                    btn.disabled = true;
+                    btn.textContent = "Salvando...";
+                    console.log("Salvando usuário...");
+                    
+                    const id = document.getElementById('editUserId').value;
+                    const u = id ? state.users.find(user => user.id === id) : null;
+
+                    // Proteção extra contra edição do Master por Coordenador
+                    if (u && u.role === 'master' && state.currentUser.role === 'coordenador') {
+                        throw new Error('Você não tem permissão para alterar este perfil.');
+                    }
+
+                    const data = {
+                        name: document.getElementById('uName').value,
+                        username: document.getElementById('uUser').value,
+                        password: document.getElementById('uPass').value,
+                        role: document.getElementById('uRole').value
+                    };
+
+                    if (id) {
+                        await db.collection('users').doc(id).update(data);
+                        console.log("Usuário atualizado:", id);
+                        if (state.currentUser && state.currentUser.id === id) {
+                            state.currentUser = { id, ...data };
+                            localStorage.setItem('gym_currentUser', JSON.stringify(state.currentUser));
+                        }
+                    } else {
+                        const newDoc = await db.collection('users').add(data);
+                        console.log("Novo usuário criado:", newDoc.id);
+                    }
+                    
+                    ui.closeModal('modalUser');
+                    await logic.syncAll();
+                } catch (error) {
+                    console.error("Erro ao salvar usuário:", error);
+                    alert("Erro ao salvar no Firebase: " + error.message);
+                } finally {
+                    btn.disabled = false;
+                    btn.textContent = originalText;
+                }
+            },
+
+            prepareUserModal() {
+                document.getElementById('userModalTitle').textContent = 'Novo Professor';
+                document.getElementById('editUserId').value = '';
+                document.getElementById('uName').value = '';
+                document.getElementById('uUser').value = '';
+                document.getElementById('uPass').value = '';
+                document.getElementById('uRole').value = 'professor';
+                document.getElementById('uRoleArea').style.display = 'block';
+                ui.openModal('modalUser');
+            },
+
+            editUser(id) {
+                const u = state.users.find(user => user.id === id);
+                if (!u) return;
+
+                // Restrição: Coordenador não pode editar Master
+                if (state.currentUser.role === 'coordenador' && u.role === 'master') {
+                    return alert('Coordenadores não possuem permissão para alterar o acesso do Departamento de Esportes.');
+                }
+
+                document.getElementById('userModalTitle').textContent = 'Editar Perfil';
+                document.getElementById('editUserId').value = u.id;
+                document.getElementById('uName').value = u.name;
+                document.getElementById('uUser').value = u.username;
+                document.getElementById('uPass').value = u.password;
+                document.getElementById('uRole').value = u.role;
+                document.getElementById('uRoleArea').style.display = (state.currentUser.role === 'coordenador' && state.currentUser.id !== id) ? 'block' : 'none';
+                ui.openModal('modalUser');
+            },
+
+            async deleteSchedule(id) { if (confirm('Excluir agendamento?')) { await db.collection('schedules').doc(id).delete(); await logic.syncAll(); } },
+            async deleteEquipment(id) { if (confirm('Excluir máquina?')) { await db.collection('equipment').doc(id).delete(); await logic.syncAll(); } },
+            async deleteUser(id) { 
+                const u = state.users.find(user => user.id === id);
+                if (u && (u.role === 'coordenador' || u.role === 'master')) return alert('Este perfil de acesso não pode ser removido do sistema!');
+                if (id === state.currentUser.id) return alert('Você não pode se excluir!');
+                if (confirm('Remover professor da equipe?')) { await db.collection('users').doc(id).delete(); await logic.syncAll(); } 
+            },
+            async deleteMaintenanceLog(id) { 
+                if (confirm('Excluir este registro de manutenção do histórico?')) { 
+                    try {
+                        await db.collection('maintenanceLogs').doc(id).delete(); 
+                        await logic.syncAll(); 
+                    } catch (e) {
+                        alert('Erro ao excluir: ' + e.message);
+                    }
+                } 
+            },
+            async deletePendency(id) { 
+                if (confirm('Remover esta pendência do sistema?')) { 
+                    try {
+                        await db.collection('pendencies').doc(id).delete(); 
+                        await logic.syncAll(); 
+                    } catch (e) {
+                        alert('Erro ao excluir: ' + e.message);
+                    }
+                } 
+            },
+
+            // --- PARTNERS LOGIC ---
+            async handlePartnerSubmit(e) {
+                e.preventDefault();
+                const btn = e.target.querySelector('button[type="submit"]');
+                const originalText = btn.textContent;
+                
+                try {
+                    btn.disabled = true;
+                    btn.textContent = "Salvando...";
+                    
+                    const id = document.getElementById('editPartnerId').value;
+                    const dependentsStr = document.getElementById('pDependents').value;
+                    const data = {
+                        title: document.getElementById('pTitle').value,
+                        name: document.getElementById('pName').value,
+                        dependents: dependentsStr ? dependentsStr.split(',').map(s => s.trim()).filter(s => s !== "") : []
+                    };
+
+                    if (id) {
+                        await db.collection('partners').doc(id).update(data);
+                    } else {
+                        await db.collection('partners').add(data);
+                    }
+                    ui.closeModal('modalPartner');
+                    await logic.syncAll();
+                } catch (error) {
+                    console.error("Erro ao salvar sócio:", error);
+                    alert("Erro ao salvar no Firebase.");
+                } finally {
+                    btn.disabled = false;
+                    btn.textContent = originalText;
+                }
+            },
+
+            editPartner(id) {
+                const p = state.partners.find(partner => partner.id === id);
+                if (!p) return;
+                document.getElementById('partnerModalTitle').textContent = 'Editar Sócio';
+                document.getElementById('editPartnerId').value = p.id;
+                document.getElementById('pTitle').value = p.title;
+                document.getElementById('pName').value = p.name;
+                document.getElementById('pDependents').value = p.dependents ? p.dependents.join(', ') : '';
+                ui.openModal('modalPartner');
+            },
+
+            async deletePartner(id) {
+                if (confirm('Deseja excluir este sócio e seus dependentes da base?')) {
+                    try {
+                        await db.collection('partners').doc(id).delete();
+                        await logic.syncAll();
+                    } catch (error) {
+                        alert("Erro ao deletar.");
+                    }
+                }
+            },
+
+            async importPartnersJSON() {
+                const area = document.getElementById('jsonImportArea');
+                const raw = area.value.trim();
+                if (!raw) return alert("Cole o JSON para importar.");
+
+                try {
+                    let data = JSON.parse(raw);
+                    let partnersToImport = [];
+
+                    // Suporta o formato de dicionário: {"1": ["NOME 1", "NOME 2"]}
+                    if (!Array.isArray(data) && typeof data === 'object') {
+                        for (const [title, names] of Object.entries(data)) {
+                            if (Array.isArray(names) && names.length > 0) {
+                                partnersToImport.push({
+                                    title: title,
+                                    name: names[0], // Primeiro nome é o Titular
+                                    dependents: names.slice(1) // Restante são dependentes
+                                });
+                            }
+                        }
+                    } else if (Array.isArray(data)) {
+                        partnersToImport = data;
+                    } else {
+                        throw new Error("O JSON deve ser uma lista [] ou um dicionário de títulos {}");
+                    }
+
+                    if (partnersToImport.length === 0) throw new Error("Nenhum dado válido encontrado.");
+
+                    if (confirm(`Deseja importar ${partnersToImport.length} sócios? Isso pode levar alguns segundos.`)) {
+                        const batch = db.batch();
+                        partnersToImport.forEach(item => {
+                            const ref = db.collection('partners').doc();
+                            batch.set(ref, {
+                                title: String(item.title),
+                                name: item.name,
+                                dependents: item.dependents || []
+                            });
+                        });
+                        await batch.commit();
+                        alert("Importação concluída com sucesso!");
+                        area.value = "";
+                        await logic.syncAll();
+                    }
+                } catch (error) {
+                    console.error(error);
+                    alert("Erro no formato do JSON: " + error.message);
+                }
+            },
+
+            exportPartnersJSON() {
+                const simplified = state.partners.map(({ title, name, dependents }) => ({ title, name, dependents }));
+                const json = JSON.stringify(simplified, null, 2);
+                
+                // Opção 1: Colocar na área de texto
+                document.getElementById('jsonImportArea').value = json;
+                
+                // Opção 2: Download do arquivo
+                const blob = new Blob([json], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `academia_pro_socios_${new Date().toISOString().split('T')[0]}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+                
+                alert("Dados exportados! O arquivo foi baixado e o código JSON está na caixa de texto.");
+            }
+        };
+
+        // Bootstrap
+        window.onload = () => {
+            ui.init();
+            
+            // Segurança: Se o overlay ainda estiver visível após 5s, remova-o
+            setTimeout(() => {
+                const overlay = document.getElementById('loadingOverlay');
+                if (overlay && !overlay.classList.contains('hidden')) {
+                    console.warn("Removendo overlay de carregamento via fallback de tempo.");
+                    overlay.classList.add('hidden');
+                }
+            }, 5000);
+        };
+    </script>
+</body>
+</html>
